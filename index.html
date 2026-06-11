@@ -1,0 +1,2381 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>こどもカレンダー</title>
+<!-- iPad: ホーム画面に追加するとフルスクリーンのアプリとして起動 -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="こどもカレンダー">
+<link rel="apple-touch-icon" href="icon.png">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@500;700;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f7f4ee;
+    --surface: #ffffff;
+    --ink: #3f3a36;
+    --ink-soft: #8c847c;
+    --ink-faint: #c2bab1;
+    --line: #efe9e1;
+
+    --coral: #f2766b;
+    --coral-soft: #fdeeec;
+    --teal: #4fae9b;
+    --teal-soft: #e7f4f0;
+    --sky: #5e9ec9;
+    --sky-soft: #eaf2f9;
+    --sun: #f0b32e;
+    --sun-soft: #fdf4de;
+    --lav: #9b8ccb;
+    --lav-soft: #f1edf9;
+
+    --r-lg: 28px;
+    --r-md: 20px;
+    --r-sm: 14px;
+    --shadow-sm: 0 1px 2px rgba(63,58,54,.05), 0 4px 12px rgba(63,58,54,.06);
+    --shadow-md: 0 2px 4px rgba(63,58,54,.05), 0 12px 32px rgba(63,58,54,.10);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; }
+  body {
+    font-family: "Zen Maru Gothic", "Hiragino Maru Gothic ProN", "BIZ UDPGothic", "Yu Gothic", sans-serif;
+    font-weight: 500;
+    background: var(--bg);
+    color: var(--ink);
+    min-height: 100%;
+    overflow-x: hidden;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none; /* iPad: 長押しメニューを出さない */
+    overscroll-behavior: none;   /* iPad: 引っぱりバウンスを抑える */
+    line-height: 1.5;
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  }
+  /* 親モードの入力欄は選択可能に戻す */
+  input, select, textarea { user-select: auto; -webkit-user-select: auto; }
+  /* やわらかい背景の光 */
+  body::before, body::after {
+    content: "";
+    position: fixed;
+    border-radius: 50%;
+    filter: blur(90px);
+    opacity: 0.5;
+    pointer-events: none;
+    z-index: -1;
+  }
+  body::before { width: 46vw; height: 46vw; background: var(--blob1, #fbe3d4); top: -16vw; right: -10vw; }
+  body::after  { width: 40vw; height: 40vw; background: var(--blob2, #dcebf5); bottom: -14vw; left: -10vw; }
+
+  /* ============ きせつの背景 ============ */
+  #seasonBg {
+    position: fixed; inset: 0;
+    z-index: -1;
+    overflow: hidden;
+    pointer-events: none;
+  }
+  .season-deco {
+    position: absolute;
+    opacity: .45;
+    line-height: 1;
+    animation: decoFloat 7s ease-in-out infinite;
+  }
+  .season-fall {
+    position: absolute;
+    top: -8vh;
+    line-height: 1;
+    animation-name: fallDown;
+    animation-timing-function: linear;
+    animation-iteration-count: infinite;
+  }
+  @keyframes decoFloat {
+    0%,100% { transform: translateY(0) rotate(-4deg); }
+    50% { transform: translateY(-14px) rotate(4deg); }
+  }
+  @keyframes fallDown {
+    from { transform: translate(0, 0) rotate(0deg); }
+    to { transform: translate(var(--sway, 0px), 115vh) rotate(var(--rot, 0deg)); }
+  }
+
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 22px 24px 30px; }
+
+  /* ============ ヘッダー ============ */
+  header {
+    display: flex;
+    align-items: stretch;
+    gap: 14px;
+    flex-wrap: wrap;
+    margin-bottom: 18px;
+  }
+  .clock-card {
+    background: var(--surface);
+    border-radius: var(--r-lg);
+    box-shadow: var(--shadow-sm);
+    border: 1px solid var(--line);
+    padding: 14px 26px 12px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+  #clock {
+    font-size: clamp(42px, 5.4vw, 60px);
+    font-weight: 900;
+    line-height: 1.05;
+    letter-spacing: 1px;
+    font-variant-numeric: tabular-nums;
+    color: var(--ink);
+  }
+  #clock small { font-size: 0.45em; color: var(--ink-faint); font-weight: 700; margin-left: 2px; }
+  #dateText { font-size: clamp(14px, 1.7vw, 17px); font-weight: 700; color: var(--ink-soft); }
+
+  .hello-card {
+    flex: 1;
+    min-width: 240px;
+    background: var(--surface);
+    border-radius: var(--r-lg);
+    box-shadow: var(--shadow-sm);
+    border: 1px solid var(--line);
+    padding: 14px 22px;
+    display: flex;
+    align-items: center;
+    gap: 18px;
+  }
+  #weatherBox {
+    font-size: clamp(34px, 4vw, 46px);
+    width: 1.85em; height: 1.85em;
+    flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 50%;
+    background: var(--sun-soft);
+  }
+  .hello-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  #greeting { font-size: clamp(17px, 2.2vw, 22px); font-weight: 900; }
+  #messageBox {
+    font-size: clamp(13px, 1.7vw, 16px);
+    color: var(--ink-soft);
+    font-weight: 700;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  #gearBtn {
+    border: 1px solid var(--line);
+    background: var(--surface);
+    box-shadow: var(--shadow-sm);
+    font-size: 20px;
+    width: 48px;
+    border-radius: var(--r-lg);
+    cursor: pointer;
+    color: var(--ink-faint);
+    align-self: stretch;
+    transition: transform .15s;
+  }
+  #gearBtn:active { transform: scale(0.93); }
+
+  /* ============ レイアウト ============ */
+  main {
+    display: grid;
+    grid-template-columns: 1.25fr 1fr;
+    gap: 18px;
+    align-items: start;
+  }
+  @media (max-width: 780px) { main { grid-template-columns: 1fr; } }
+  .col { display: flex; flex-direction: column; gap: 18px; }
+
+  .panel {
+    background: var(--surface);
+    border-radius: var(--r-lg);
+    box-shadow: var(--shadow-sm);
+    border: 1px solid var(--line);
+    padding: 22px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  .panel-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .panel h2 {
+    font-size: clamp(17px, 2.2vw, 21px);
+    font-weight: 900;
+    display: flex; align-items: center; gap: 9px;
+  }
+  .h-icon {
+    width: 36px; height: 36px;
+    border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+  }
+  .h-icon.coral { background: var(--coral-soft); }
+  .h-icon.teal  { background: var(--teal-soft); }
+  .h-icon.sun   { background: var(--sun-soft); }
+  .h-icon.lav   { background: var(--lav-soft); }
+  .h-icon.sky   { background: var(--sky-soft); }
+
+  /* セグメントタブ */
+  .seg {
+    display: flex;
+    background: #f0ebe3;
+    border-radius: 999px;
+    padding: 4px;
+  }
+  .seg button {
+    border: none;
+    font-family: inherit;
+    font-size: clamp(13px, 1.6vw, 15px);
+    font-weight: 700;
+    color: var(--ink-soft);
+    background: transparent;
+    padding: 7px 20px;
+    border-radius: 999px;
+    cursor: pointer;
+    transition: all .2s;
+  }
+  .seg button.active {
+    background: var(--surface);
+    color: var(--ink);
+    box-shadow: 0 2px 6px rgba(63,58,54,.12);
+  }
+
+  /* ============ きょうのよてい ============ */
+  #todayList { display: flex; flex-direction: column; gap: 10px; }
+  .event-card {
+    display: grid;
+    grid-template-columns: auto auto 1fr;
+    align-items: center;
+    gap: 16px;
+    background: var(--tint, var(--sky-soft));
+    border-radius: var(--r-md);
+    padding: 13px 18px;
+    animation: fadeUp .45s ease both;
+  }
+  .event-time {
+    font-size: clamp(15px, 1.9vw, 18px);
+    font-weight: 900;
+    font-variant-numeric: tabular-nums;
+    color: var(--accent, var(--sky));
+    padding-right: 16px;
+    border-right: 2px solid rgba(63,58,54,.08);
+  }
+  .event-emoji {
+    font-size: clamp(26px, 3.2vw, 34px);
+    width: 1.85em; height: 1.85em;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(255,255,255,.75);
+    border-radius: 16px;
+  }
+  .event-title { font-size: clamp(17px, 2.3vw, 22px); font-weight: 900; }
+  .empty-note {
+    text-align: center;
+    font-size: clamp(14px, 1.9vw, 17px);
+    font-weight: 700;
+    color: var(--ink-faint);
+    padding: 36px 10px;
+    background: #faf8f4;
+    border-radius: var(--r-md);
+  }
+
+  /* ============ 週間ビュー ============ */
+  #weekView { display: none; }
+  #weekGrid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 7px; }
+  .day-col {
+    border-radius: var(--r-sm);
+    background: #faf8f4;
+    border: 1px solid var(--line);
+    padding: 8px 5px 6px;
+    min-height: 150px;
+    display: flex; flex-direction: column; gap: 5px;
+  }
+  .day-col.today-col { background: var(--coral-soft); border-color: #f7cfc9; }
+  .day-head { text-align: center; line-height: 1.15; padding-bottom: 5px; }
+  .day-head .num { font-size: clamp(14px, 1.9vw, 19px); font-weight: 900; }
+  .day-head .dow { display: block; font-size: clamp(9px, 1.3vw, 12px); font-weight: 700; color: var(--ink-soft); }
+  .day-head.sun .num { color: #d9706a; }
+  .day-head.sat .num { color: var(--sky); }
+  .today-col .day-head .dow { color: var(--coral); }
+  .chip {
+    background: var(--surface);
+    border-radius: 9px;
+    font-size: clamp(9px, 1.35vw, 12px);
+    font-weight: 700;
+    padding: 4px 6px;
+    box-shadow: 0 1px 3px rgba(63,58,54,.07);
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  /* ============ スタンプカード ============ */
+  #stampView { display: none; }
+  #stampHead {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-weight: 900;
+    font-size: clamp(14px, 1.9vw, 17px);
+    margin-bottom: 10px;
+  }
+  #stampGrid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+  .stamp-dow {
+    text-align: center;
+    font-size: clamp(10px, 1.4vw, 12px);
+    font-weight: 900;
+    color: var(--ink-faint);
+    padding-bottom: 2px;
+  }
+  .stamp-cell {
+    aspect-ratio: 1;
+    background: #faf8f4;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+  }
+  .stamp-cell.empty { background: transparent; border: none; }
+  .stamp-cell .d {
+    position: absolute;
+    top: 3px; left: 6px;
+    font-size: clamp(9px, 1.3vw, 11px);
+    font-weight: 700;
+    color: var(--ink-faint);
+  }
+  .stamp-cell .mark { font-size: clamp(17px, 2.6vw, 26px); animation: checkPop .35s ease; }
+  .stamp-cell.today { outline: 2.5px solid var(--sun); outline-offset: -1px; }
+
+  /* ============ おやすみモード ============ */
+  #nightOverlay {
+    position: fixed; inset: 0;
+    z-index: 90;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    background: linear-gradient(180deg, #141b33 0%, #232c4f 60%, #2e3859 100%);
+    overflow: hidden;
+  }
+  #nightOverlay.show { display: flex; }
+  .night-star {
+    position: absolute;
+    color: #cdd6f4;
+    animation: twinkle 2.6s ease-in-out infinite;
+  }
+  #nightMoon {
+    position: absolute;
+    top: 7%; right: 10%;
+    font-size: clamp(60px, 9vw, 110px);
+    filter: drop-shadow(0 0 30px rgba(255,236,170,.45));
+  }
+  #nightClock {
+    font-size: clamp(38px, 6vw, 58px);
+    font-weight: 900;
+    color: #e8ecfa;
+    font-variant-numeric: tabular-nums;
+  }
+  #nightBuddy { width: 130px; animation: sleepBob 4.5s ease-in-out infinite; }
+  #nightBuddy .tiger-eyes {
+    transform-box: fill-box;
+    transform-origin: center;
+    transform: scaleY(0.12);
+    animation: none;
+  }
+  #nightZzz { color: #aeb9e6; font-weight: 900; font-size: 22px; animation: zzzFloat 2.6s ease-in-out infinite; }
+  #nightMsg { color: #cdd6f4; font-weight: 700; font-size: clamp(15px, 2.2vw, 19px); text-align: center; padding: 0 20px; }
+  #nightGear {
+    position: absolute;
+    top: 14px; right: 14px;
+    background: rgba(255,255,255,.07);
+    border: none;
+    border-radius: 14px;
+    width: 44px; height: 44px;
+    font-size: 17px;
+    color: rgba(255,255,255,.35);
+    cursor: pointer;
+  }
+  @keyframes twinkle { 0%,100% { opacity: .15; } 50% { opacity: .9; } }
+  @keyframes sleepBob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
+  @keyframes zzzFloat {
+    0% { transform: translateY(0); opacity: .3; }
+    50% { transform: translateY(-8px); opacity: 1; }
+    100% { transform: translateY(-16px); opacity: 0; }
+  }
+
+  /* ============ やること ============ */
+  .routine-group-title {
+    font-size: clamp(12px, 1.6vw, 14px);
+    font-weight: 900;
+    color: var(--ink-faint);
+    letter-spacing: 1px;
+    display: flex; align-items: center; gap: 8px;
+    margin-top: 2px;
+  }
+  .routine-group-title .now-badge {
+    background: var(--coral);
+    color: #fff;
+    font-size: 0.82em;
+    padding: 2px 10px;
+    border-radius: 999px;
+    animation: softPulse 2.4s infinite;
+  }
+  #routineList { display: flex; flex-direction: column; gap: 9px; }
+  .routine-card {
+    display: flex; align-items: center; gap: 13px;
+    background: var(--surface);
+    border: 1.5px solid var(--line);
+    border-radius: var(--r-md);
+    padding: 10px 14px;
+    cursor: pointer;
+    transition: transform .12s, background .25s, border-color .25s;
+  }
+  .routine-card:active { transform: scale(0.975); }
+  .routine-card.done { background: var(--teal-soft); border-color: #cbe8e0; }
+  .routine-emoji {
+    font-size: clamp(22px, 2.8vw, 28px);
+    width: 1.9em; height: 1.9em;
+    flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    background: #f6f3ed;
+    border-radius: 14px;
+    transition: background .25s;
+  }
+  .routine-card.done .routine-emoji { background: rgba(255,255,255,.8); }
+  .routine-title { font-size: clamp(15px, 2vw, 19px); font-weight: 700; flex: 1; transition: color .25s; }
+  .routine-card.done .routine-title { color: #76a89c; text-decoration: line-through; text-decoration-thickness: 2px; }
+  .routine-check {
+    width: 34px; height: 34px;
+    flex-shrink: 0;
+    border-radius: 50%;
+    border: 2.5px solid var(--ink-faint);
+    display: flex; align-items: center; justify-content: center;
+    color: transparent;
+    font-size: 17px;
+    font-weight: 900;
+    transition: all .25s;
+  }
+  .routine-card.done .routine-check {
+    border-color: var(--teal);
+    background: var(--teal);
+    color: #fff;
+    animation: checkPop .35s ease;
+  }
+
+  /* ============ しゅくだい ============ */
+  .hw-card { border-color: #e3dcf2; background: #fbfaff; }
+  .hw-card .routine-emoji { background: var(--lav-soft); }
+  .hw-card.done { background: var(--lav-soft); border-color: #cfc2ea; }
+  .hw-card.done .routine-title { color: #8678ab; text-decoration: line-through; text-decoration-thickness: 2px; }
+  .hw-card.done .routine-check { border-color: var(--lav); background: var(--lav); color: #fff; animation: checkPop .35s ease; }
+  #gemCount {
+    font-size: clamp(15px, 2vw, 19px);
+    font-weight: 900;
+    color: #e3618a;
+    background: #fde7ee;
+    border-radius: 999px;
+    padding: 5px 16px;
+  }
+  .gem-bar-wrap {
+    background: #f0ebe3;
+    border-radius: 999px;
+    height: 12px;
+    overflow: hidden;
+  }
+  #gemBarFg {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, #f9b8c8, #ef6f8e);
+    border-radius: 999px;
+    transition: width .6s cubic-bezier(.22,1,.36,1);
+  }
+  #hwRewardText {
+    text-align: center;
+    font-size: clamp(13px, 1.8vw, 15px);
+    font-weight: 700;
+    color: var(--ink-soft);
+    background: var(--lav-soft);
+    border-radius: 999px;
+    padding: 9px 20px;
+  }
+  #hwRewardText.ready { background: var(--coral-soft); color: var(--coral); }
+
+  /* ============ おてつだい ============ */
+  .chore-card { border-color: #d3e7f3; background: #f9fcfe; }
+  .chore-card .routine-emoji { background: var(--sky-soft); }
+  .chore-card.done { background: var(--sky-soft); border-color: #bcd9ec; }
+  .chore-card.done .routine-title { color: #5b8aa8; text-decoration: line-through; text-decoration-thickness: 2px; }
+  .chore-card.done .routine-check { border-color: var(--sky); background: var(--sky); color: #fff; animation: checkPop .35s ease; }
+  #diaCount {
+    font-size: clamp(15px, 2vw, 19px);
+    font-weight: 900;
+    color: #4a8fc2;
+    background: #e3f0f9;
+    border-radius: 999px;
+    padding: 5px 16px;
+  }
+  #diaBarFg {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, #9cd0f5, #4a8fc2);
+    border-radius: 999px;
+    transition: width .6s cubic-bezier(.22,1,.36,1);
+  }
+  #choreRewardText {
+    text-align: center;
+    font-size: clamp(13px, 1.8vw, 15px);
+    font-weight: 700;
+    color: var(--ink-soft);
+    background: var(--sky-soft);
+    border-radius: 999px;
+    padding: 9px 20px;
+  }
+  #choreRewardText.ready { background: var(--coral-soft); color: var(--coral); }
+
+  /* ============ スター ============ */
+  #starPanel { align-items: center; }
+  #starPanel .panel-head { align-self: stretch; }
+  .ring-wrap { position: relative; width: 168px; height: 168px; }
+  .ring-wrap svg { transform: rotate(-90deg); }
+  .ring-bg { fill: none; stroke: #f0ebe3; stroke-width: 13; }
+  .ring-fg {
+    fill: none;
+    stroke: url(#ringGrad);
+    stroke-width: 13;
+    stroke-linecap: round;
+    transition: stroke-dashoffset .7s cubic-bezier(.22,1,.36,1);
+  }
+  .ring-center {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 0;
+  }
+  .ring-center .star-ico { font-size: 26px; line-height: 1; }
+  #starNum { font-size: 40px; font-weight: 900; line-height: 1.1; color: var(--ink); }
+  .ring-center .star-label { font-size: 11px; font-weight: 700; color: var(--ink-faint); letter-spacing: 2px; }
+  #rewardText {
+    text-align: center;
+    font-size: clamp(13px, 1.8vw, 15px);
+    font-weight: 700;
+    color: var(--ink-soft);
+    background: var(--sun-soft);
+    border-radius: 999px;
+    padding: 9px 20px;
+  }
+  #rewardText.ready { background: var(--coral-soft); color: var(--coral); }
+
+  /* ============ トラのキャラクター ============ */
+  #tigerWrap {
+    position: fixed;
+    right: 16px;
+    bottom: 12px;
+    z-index: 60;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    pointer-events: none;
+  }
+  #tiger {
+    width: 112px;
+    cursor: pointer;
+    pointer-events: auto;
+    animation: idleBob 3.4s ease-in-out infinite;
+    filter: drop-shadow(0 6px 10px rgba(63,58,54,.18));
+  }
+  #tiger:active { transform: scale(.94); }
+  #tiger.talking { animation: talkWiggle .45s ease 4; }
+  @media (max-width: 780px) { #tiger { width: 88px; } }
+  .tiger-eyes {
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: blinkEyes 5s infinite;
+  }
+  #speechBubble {
+    pointer-events: auto;
+    cursor: pointer;
+    display: none;
+    position: relative;
+    background: var(--surface);
+    border: 1.5px solid var(--line);
+    border-radius: 18px;
+    box-shadow: var(--shadow-md);
+    padding: 13px 17px;
+    max-width: 270px;
+    margin: 0 14px 14px 0;
+    font-size: 14.5px;
+    font-weight: 700;
+    line-height: 1.65;
+    color: var(--ink);
+  }
+  #speechBubble.show { display: block; animation: bubblePop .35s cubic-bezier(.22,1,.36,1) both; }
+  #speechBubble::after {
+    content: "";
+    position: absolute;
+    bottom: -8px;
+    right: 34px;
+    width: 16px; height: 16px;
+    background: var(--surface);
+    border-right: 1.5px solid var(--line);
+    border-bottom: 1.5px solid var(--line);
+    transform: rotate(45deg);
+  }
+  @keyframes idleBob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-7px); } }
+  @keyframes talkWiggle {
+    0%,100% { transform: rotate(0) translateY(0); }
+    25% { transform: rotate(-5deg) translateY(-5px); }
+    75% { transform: rotate(5deg) translateY(-2px); }
+  }
+  @keyframes blinkEyes { 0%, 92%, 100% { transform: scaleY(1); } 95% { transform: scaleY(0.12); } }
+  /* 連打コンボのリアクション */
+  #tiger.tap-squash { animation: tapSquash .3s ease; }
+  #tiger.tap-spin   { animation: tapSpin .55s ease; }
+  #tiger.tap-jump   { animation: tapJump .55s cubic-bezier(.3,1.4,.5,1); }
+  #tiger.tap-flip   { animation: tapFlip .8s ease; }
+  @keyframes tapSquash { 0% { transform: scale(1); } 40% { transform: scale(1.18, .78); } 100% { transform: scale(1); } }
+  @keyframes tapSpin { from { transform: rotate(0); } to { transform: rotate(360deg); } }
+  @keyframes tapJump {
+    0%, 100% { transform: translateY(0); }
+    40% { transform: translateY(-48px) scale(1.08); }
+    60% { transform: translateY(-40px); }
+  }
+  @keyframes tapFlip {
+    0% { transform: rotate(0) scale(1); }
+    50% { transform: rotate(360deg) scale(1.25); }
+    100% { transform: rotate(720deg) scale(1); }
+  }
+  /* ねるじかんを過ぎた「眠い」状態 */
+  #tiger.sleepy { animation: sleepBob 5s ease-in-out infinite; }
+  #tiger.sleepy .tiger-eyes {
+    transform-box: fill-box;
+    transform-origin: center;
+    transform: scaleY(0.4);
+    animation: none;
+  }
+  #buddyZzz {
+    display: none;
+    position: absolute;
+    right: 100px;
+    bottom: 92px;
+    font-size: 22px;
+    pointer-events: none;
+    animation: zzzFloat 2.6s ease-in-out infinite;
+  }
+  @media (max-width: 780px) { #buddyZzz { right: 80px; bottom: 74px; } }
+  @keyframes bubblePop {
+    from { opacity: 0; transform: translateY(12px) scale(.7); }
+    to { opacity: 1; transform: none; }
+  }
+
+  /* ============ アニメーション ============ */
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+  @keyframes softPulse { 0%,100% { opacity: 1; } 50% { opacity: .55; } }
+  @keyframes checkPop { 0% { transform: scale(.4); } 65% { transform: scale(1.18); } 100% { transform: scale(1); } }
+  @keyframes flyStar {
+    0% { transform: translate(0,0) scale(1); opacity: 1; }
+    100% { transform: translate(var(--dx), var(--dy)) scale(.3) rotate(320deg); opacity: 0; }
+  }
+  .fly-star { position: fixed; font-size: 26px; pointer-events: none; z-index: 999; animation: flyStar .9s ease-out forwards; }
+  @keyframes popBig {
+    0% { transform: scale(.5) translateY(20px); opacity: 0; }
+    60% { transform: scale(1.05); }
+    100% { transform: scale(1) translateY(0); opacity: 1; }
+  }
+
+  /* ============ オーバーレイ ============ */
+  .overlay {
+    position: fixed; inset: 0;
+    background: rgba(63,58,54,.4);
+    backdrop-filter: blur(5px);
+    -webkit-backdrop-filter: blur(5px);
+    display: none;
+    align-items: center; justify-content: center;
+    z-index: 100;
+    padding: 20px;
+  }
+  .overlay.show { display: flex; }
+  .overlay-card {
+    background: var(--surface);
+    border-radius: 30px;
+    padding: 36px 42px;
+    text-align: center;
+    max-width: 460px;
+    width: 100%;
+    animation: popBig .45s cubic-bezier(.22,1,.36,1) both;
+    box-shadow: 0 24px 70px rgba(40,35,30,.3);
+  }
+  .overlay-card .big-emoji { font-size: 70px; line-height: 1.2; }
+  .overlay-card h3 { font-size: 28px; font-weight: 900; margin: 8px 0 6px; color: var(--coral); }
+  .overlay-card p { font-size: 17px; font-weight: 700; color: var(--ink-soft); margin-bottom: 22px; white-space: pre-line; }
+  .btn {
+    font-family: inherit;
+    font-size: 16px;
+    font-weight: 900;
+    border: none;
+    border-radius: 999px;
+    padding: 13px 34px;
+    cursor: pointer;
+    background: var(--ink);
+    color: #fff;
+    transition: transform .12s, opacity .2s;
+  }
+  .btn:active { transform: scale(.96); }
+  .btn.coral { background: var(--coral); }
+  .btn.small { font-size: 13px; padding: 9px 18px; }
+  .btn.ghost { background: #efeae3; color: var(--ink-soft); }
+
+  /* ============ 親モード ============ */
+  #parentModal .overlay-card {
+    max-width: 660px;
+    text-align: left;
+    max-height: 88vh;
+    overflow-y: auto;
+    animation: none;
+    user-select: text;
+    padding: 30px 32px;
+  }
+  #parentModal h3 { color: var(--ink); font-size: 20px; font-weight: 900; }
+  .ptabs { display: flex; gap: 6px; margin: 16px 0; flex-wrap: wrap; }
+  .ptab {
+    border: none; font-family: inherit; font-weight: 700; font-size: 13px;
+    padding: 8px 16px; border-radius: 999px; cursor: pointer;
+    background: #f0ebe3; color: var(--ink-soft);
+    transition: all .2s;
+  }
+  .ptab.active { background: var(--ink); color: #fff; }
+  .psection { display: none; }
+  .psection.active { display: block; }
+  .plist { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
+  .plist-item {
+    display: flex; align-items: center; gap: 10px;
+    background: #faf8f4;
+    border: 1px solid var(--line);
+    border-radius: var(--r-sm);
+    padding: 9px 13px;
+    font-size: 14px;
+    font-weight: 700;
+  }
+  .plist-item .grow { flex: 1; }
+  .plist-item .meta { color: var(--ink-faint); font-size: 12px; font-weight: 700; }
+  .del-btn {
+    border: none; background: transparent; color: var(--ink-faint);
+    border-radius: 8px; padding: 5px 9px; cursor: pointer;
+    font-family: inherit; font-weight: 900; font-size: 13px;
+    transition: all .15s;
+  }
+  .del-btn:hover { background: #fde3e0; color: var(--coral); }
+  .pform {
+    display: flex; flex-direction: column; gap: 10px;
+    background: #faf8f4;
+    border: 1px solid var(--line);
+    border-radius: var(--r-md);
+    padding: 16px;
+  }
+  .pform label { font-size: 12px; font-weight: 900; color: var(--ink-faint); letter-spacing: .5px; }
+  .pform input[type="text"], .pform input[type="date"], .pform input[type="time"], .pform input[type="number"], .pform select {
+    font-family: inherit; font-weight: 700; font-size: 15px; color: var(--ink);
+    padding: 10px 12px;
+    border: 1.5px solid var(--line);
+    border-radius: 12px;
+    width: 100%;
+    background: var(--surface);
+    outline: none;
+    transition: border-color .2s;
+  }
+  .pform input:focus, .pform select:focus { border-color: var(--sky); }
+  .emoji-row { display: flex; gap: 4px; flex-wrap: wrap; }
+  .emoji-opt {
+    font-size: 20px; border: 2px solid transparent; background: var(--surface);
+    border-radius: 10px; padding: 4px 7px; cursor: pointer;
+    transition: all .15s;
+  }
+  .emoji-opt.sel { border-color: var(--sky); background: var(--sky-soft); }
+  .inline { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .inline > * { width: auto !important; }
+  .hint { font-size: 11.5px; font-weight: 700; color: var(--ink-faint); }
+</style>
+</head>
+<body>
+<div id="seasonBg"></div>
+<div class="wrap">
+
+<header>
+  <div class="clock-card">
+    <div id="clock">--:--</div>
+    <div id="dateText"></div>
+  </div>
+  <div class="hello-card">
+    <div id="weatherBox">☀️</div>
+    <div class="hello-text">
+      <div id="greeting"></div>
+      <div id="messageBox"></div>
+    </div>
+  </div>
+  <button id="gearBtn" title="おうちのひとよう：1びょう ながおし">⚙</button>
+</header>
+
+<main>
+  <!-- 左カラム：よてい・しゅくだい・おてつだい -->
+  <div class="col">
+    <!-- よてい -->
+    <section class="panel">
+      <div class="panel-head">
+        <h2><span class="h-icon coral">📅</span>よてい</h2>
+        <div class="seg">
+          <button class="active" id="tabToday">きょう</button>
+          <button id="tabWeek">こんしゅう</button>
+          <button id="tabStamp">スタンプ</button>
+        </div>
+      </div>
+      <div id="todayView"><div id="todayList"></div></div>
+      <div id="weekView"><div id="weekGrid"></div></div>
+      <div id="stampView">
+        <div id="stampHead"></div>
+        <div id="stampGrid"></div>
+        <p class="hint" style="margin-top:10px; text-align:center;">やることを ぜんぶ できた日に 💮 スタンプが もらえるよ</p>
+      </div>
+    </section>
+
+    <!-- しゅくだい（スターとは別の❤️がたまる） -->
+    <section class="panel">
+      <div class="panel-head">
+        <h2><span class="h-icon lav">📚</span>しゅくだい</h2>
+        <span id="gemCount">❤️ × 0</span>
+      </div>
+      <div id="homeworkList"></div>
+      <div class="gem-bar-wrap"><div id="gemBarFg"></div></div>
+      <div id="hwRewardText"></div>
+    </section>
+
+    <!-- おてつだい（💎がたまる） -->
+    <section class="panel">
+      <div class="panel-head">
+        <h2><span class="h-icon sky">🧺</span>おてつだい</h2>
+        <span id="diaCount">💎 × 0</span>
+      </div>
+      <div id="choresList"></div>
+      <div class="gem-bar-wrap"><div id="diaBarFg"></div></div>
+      <div id="choreRewardText"></div>
+    </section>
+  </div>
+
+  <!-- 右カラム：やること・スター -->
+  <div class="col">
+    <!-- やること -->
+    <section class="panel">
+      <div class="panel-head">
+        <h2><span class="h-icon teal">✅</span>やること</h2>
+      </div>
+      <div id="routineList"></div>
+    </section>
+
+    <!-- スター -->
+    <section class="panel" id="starPanel">
+      <div class="panel-head">
+        <h2><span class="h-icon sun">⭐</span>スター</h2>
+      </div>
+      <div class="ring-wrap">
+        <svg width="168" height="168" viewBox="0 0 168 168">
+          <defs>
+            <linearGradient id="ringGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#f6c453"/>
+              <stop offset="100%" stop-color="#f2766b"/>
+            </linearGradient>
+          </defs>
+          <circle class="ring-bg" cx="84" cy="84" r="72"/>
+          <circle class="ring-fg" id="ringFg" cx="84" cy="84" r="72"/>
+        </svg>
+        <div class="ring-center">
+          <span class="star-ico">⭐</span>
+          <span id="starNum">0</span>
+          <span class="star-label">スター</span>
+        </div>
+      </div>
+      <div id="rewardText"></div>
+    </section>
+  </div>
+</main>
+
+</div><!-- /wrap -->
+
+<!-- おやすみモード -->
+<div id="nightOverlay">
+  <div id="nightStars"></div>
+  <div id="nightMoon">🌙</div>
+  <button id="nightGear" title="おうちのひとよう：1びょう ながおし">⚙</button>
+  <div id="nightClock"></div>
+  <div id="nightBuddy"></div>
+  <div id="nightZzz">z z Z …</div>
+  <div id="nightMsg">おやすみなさい… また あした あそぼうね</div>
+</div>
+
+<!-- 曜日のおともだち（キャラクターはJSが曜日で切り替え） -->
+<div id="tigerWrap">
+  <div id="speechBubble" onclick="this.classList.remove('show')"><span id="speechText"></span></div>
+  <span id="buddyZzz">💤</span>
+  <div id="tiger" title="タップしてみてね"></div>
+</div>
+
+<!-- できたね！オーバーレイ -->
+<div class="overlay" id="praiseOverlay">
+  <div class="overlay-card">
+    <div class="big-emoji" id="praiseEmoji">🎉</div>
+    <h3 id="praiseTitle">やったね！</h3>
+    <p id="praiseMsg"></p>
+    <button class="btn coral" onclick="closeOverlay('praiseOverlay')">とじる</button>
+  </div>
+</div>
+
+<!-- 親モード -->
+<div class="overlay" id="parentModal">
+  <div class="overlay-card">
+    <h3>👨‍👩‍👧 おうちのひと メニュー</h3>
+    <div class="ptabs">
+      <button class="ptab active" data-ps="psEvents">よてい</button>
+      <button class="ptab" data-ps="psRoutines">やること</button>
+      <button class="ptab" data-ps="psHomework">しゅくだい</button>
+      <button class="ptab" data-ps="psChores">おてつだい</button>
+      <button class="ptab" data-ps="psMails">おてがみ</button>
+      <button class="ptab" data-ps="psReward">ごほうび</button>
+      <button class="ptab" data-ps="psSettings">せってい</button>
+    </div>
+
+    <!-- よてい管理 -->
+    <div class="psection active" id="psEvents">
+      <div class="plist" id="eventAdminList"></div>
+      <div class="pform">
+        <label>あたらしい よてい</label>
+        <input type="text" id="evTitle" placeholder="なまえ（例：すいえい）">
+        <div class="emoji-row" id="evEmojiRow"></div>
+        <div class="inline">
+          <label style="font-size:13px; font-weight:700;"><input type="radio" name="evRepeat" value="once" checked> この日だけ</label>
+          <label style="font-size:13px; font-weight:700;"><input type="radio" name="evRepeat" value="weekly"> まいしゅう くりかえす</label>
+        </div>
+        <div class="inline" id="evOnceRow">
+          <input type="date" id="evDate">
+        </div>
+        <div class="inline" id="evWeeklyRow" style="display:none;">
+          <label style="font-size:13px;"><input type="checkbox" class="ev-dow" value="0"> にち</label>
+          <label style="font-size:13px;"><input type="checkbox" class="ev-dow" value="1"> げつ</label>
+          <label style="font-size:13px;"><input type="checkbox" class="ev-dow" value="2"> か</label>
+          <label style="font-size:13px;"><input type="checkbox" class="ev-dow" value="3"> すい</label>
+          <label style="font-size:13px;"><input type="checkbox" class="ev-dow" value="4"> もく</label>
+          <label style="font-size:13px;"><input type="checkbox" class="ev-dow" value="5"> きん</label>
+          <label style="font-size:13px;"><input type="checkbox" class="ev-dow" value="6"> ど</label>
+        </div>
+        <div class="inline">
+          <span class="hint">じかん</span>
+          <input type="time" id="evTime" value="10:00">
+        </div>
+        <button class="btn small" onclick="addEvent()">＋ ついか</button>
+      </div>
+    </div>
+
+    <!-- やること管理 -->
+    <div class="psection" id="psRoutines">
+      <div class="plist" id="routineAdminList"></div>
+      <div class="pform">
+        <label>あたらしい やること</label>
+        <input type="text" id="rtTitle" placeholder="なまえ（例：はみがき）">
+        <div class="emoji-row" id="rtEmojiRow"></div>
+        <div class="inline">
+          <select id="rtPeriod">
+            <option value="morning">🌅 あさ</option>
+            <option value="evening">🌙 よる</option>
+          </select>
+          <button class="btn small" onclick="addRoutine()">＋ ついか</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- しゅくだい管理 -->
+    <div class="psection" id="psHomework">
+      <div class="plist" id="hwAdminList"></div>
+      <div class="pform">
+        <label>あたらしい しゅくだい（毎日リセットされます）</label>
+        <input type="text" id="hwTitle" placeholder="なまえ（例：こくごの おんどく）">
+        <div class="emoji-row" id="hwEmojiRow"></div>
+        <button class="btn small" onclick="addHomework()">＋ ついか</button>
+      </div>
+      <div class="pform" style="margin-top:12px;">
+        <label>とくべつな ごほうび（❤️ポイントは スターと別にたまります）</label>
+        <input type="number" id="hwGoal" min="1" max="999" placeholder="もくひょうの❤️のかず">
+        <input type="text" id="hwText" placeholder="例：おもちゃやさんで 1つ えらべる">
+        <div class="emoji-row" id="hwRwEmojiRow"></div>
+        <button class="btn small" onclick="saveHwReward()">ほぞん</button>
+      </div>
+      <div style="margin-top:12px;" class="inline">
+        <span style="font-weight:900; font-size:14px;">いまの❤️: <span id="adminGemCount"></span></span>
+        <button class="btn small ghost" onclick="adjustGems(1)">＋1</button>
+        <button class="btn small ghost" onclick="adjustGems(-1)">−1</button>
+        <button class="btn small coral" onclick="redeemHwReward()">🎁 とくべつごほうびと こうかん</button>
+        <button class="btn small ghost" onclick="resetGems()">リセット</button>
+      </div>
+    </div>
+
+    <!-- おてつだい管理 -->
+    <div class="psection" id="psChores">
+      <div class="plist" id="choreAdminList"></div>
+      <div class="pform">
+        <label>あたらしい おてつだい（毎日リセットされます）</label>
+        <input type="text" id="chTitle" placeholder="なまえ（例：おさらを はこぶ）">
+        <div class="emoji-row" id="chEmojiRow"></div>
+        <button class="btn small" onclick="addChore()">＋ ついか</button>
+      </div>
+      <div class="pform" style="margin-top:12px;">
+        <label>おてつだいの ごほうび（💎ポイントは スター・❤️と別にたまります）</label>
+        <input type="number" id="chGoal" min="1" max="999" placeholder="もくひょうの💎のかず">
+        <input type="text" id="chText" placeholder="例：すきな ばんごはんを リクエスト">
+        <div class="emoji-row" id="chRwEmojiRow"></div>
+        <button class="btn small" onclick="saveChoreReward()">ほぞん</button>
+      </div>
+      <div style="margin-top:12px;" class="inline">
+        <span style="font-weight:900; font-size:14px;">いまの💎: <span id="adminDiaCount"></span></span>
+        <button class="btn small ghost" onclick="adjustDias(1)">＋1</button>
+        <button class="btn small ghost" onclick="adjustDias(-1)">−1</button>
+        <button class="btn small coral" onclick="redeemChoreReward()">🎁 ごほうびと こうかん</button>
+        <button class="btn small ghost" onclick="resetDias()">リセット</button>
+      </div>
+    </div>
+
+    <!-- おてがみ（親→子メッセージ） -->
+    <div class="psection" id="psMails">
+      <div class="plist" id="mailAdminList"></div>
+      <div class="pform">
+        <label>あたらしい おてがみ（キャラクターが代わりに伝えます）</label>
+        <input type="text" id="mlText" placeholder="例：きょうの おむかえは ばあばだよ">
+        <div class="inline">
+          <input type="date" id="mlDate">
+          <input type="time" id="mlTime">
+          <span class="hint">じかんが空なら すぐとどきます</span>
+        </div>
+        <button class="btn small" onclick="addMail()">＋ ついか</button>
+      </div>
+      <p class="hint" style="margin-top:8px;">とどいたおてがみは、キャラクターをタップすると もういちど聞けます。前日までのおてがみは自動で消えます。</p>
+    </div>
+
+    <!-- ごほうび管理 -->
+    <div class="psection" id="psReward">
+      <div class="pform">
+        <label>もくひょう スターのかず</label>
+        <input type="number" id="rwGoal" min="1" max="999">
+        <label>ごほうびの ないよう</label>
+        <input type="text" id="rwText" placeholder="例：こうえんで アイス">
+        <div class="emoji-row" id="rwEmojiRow"></div>
+        <button class="btn small" onclick="saveReward()">ほぞん</button>
+      </div>
+      <div style="margin-top:14px;" class="inline">
+        <span style="font-weight:900; font-size:14px;">いまのスター: <span id="adminStarCount"></span></span>
+        <button class="btn small ghost" onclick="adjustStars(1)">＋1</button>
+        <button class="btn small ghost" onclick="adjustStars(-1)">−1</button>
+        <button class="btn small coral" onclick="redeemReward()">🎁 ごほうびと こうかん</button>
+        <button class="btn small ghost" onclick="resetStars()">リセット</button>
+      </div>
+    </div>
+
+    <!-- せってい -->
+    <div class="psection" id="psSettings">
+      <div class="pform">
+        <label>おなまえ（よびかけに つかいます）</label>
+        <input type="text" id="stName" placeholder="例：はなちゃん">
+        <label>てんきの ちいき（じどうで てんきを とってきます）</label>
+        <select id="stCity">
+          <option value="sapporo">札幌</option>
+          <option value="sendai">仙台</option>
+          <option value="tokyo">東京</option>
+          <option value="nagoya">名古屋</option>
+          <option value="osaka">大阪</option>
+          <option value="hiroshima">広島</option>
+          <option value="fukuoka">福岡</option>
+          <option value="naha">那覇</option>
+          <option value="manual">じどう取得しない（下で手動設定）</option>
+        </select>
+        <label>きょうの てんき（手動のとき／オフライン時の表示）</label>
+        <select id="stWeather">
+          <option value="☀️">☀️ はれ</option>
+          <option value="🌤️">🌤️ はれ ときどき くもり</option>
+          <option value="☁️">☁️ くもり</option>
+          <option value="🌧️">🌧️ あめ</option>
+          <option value="⛈️">⛈️ かみなり</option>
+          <option value="⛄">⛄ ゆき</option>
+        </select>
+        <label>きょうの ひとこと</label>
+        <input type="text" id="stMessage">
+        <label>ねるじかん・おきるじかん（ねるじかんを過ぎるとキャラクターが眠くなり、よなか〜おきるじかんは おやすみ画面になります）</label>
+        <div class="inline">
+          <input type="checkbox" id="stSleepOn">
+          <label for="stSleepOn" style="font-size:13px;">つかう</label>
+          <span class="hint">ねる</span>
+          <input type="time" id="stSleepStart" value="20:00">
+          <span class="hint">おきる</span>
+          <input type="time" id="stSleepEnd" value="06:00">
+        </div>
+        <button class="btn small" onclick="saveSettings()">ほぞん</button>
+      </div>
+      <p class="hint" style="margin-top:10px;">データはこの端末のブラウザに保存されます。</p>
+    </div>
+
+    <div style="text-align:center; margin-top:18px;">
+      <button class="btn ghost" onclick="closeOverlay('parentModal')">とじる</button>
+    </div>
+  </div>
+</div>
+
+<script>
+'use strict';
+const STORE_KEY = 'kidsCalendarV1';
+const DOW_JA = ['にち', 'げつ', 'か', 'すい', 'もく', 'きん', 'ど'];
+const EVENT_EMOJIS = ['🏊','⚽','🎹','🎨','🏫','🚌','🏥','🎂','🎪','👵','🛝','📚','🦷','✂️','🎁','🌸'];
+const ROUTINE_EMOJIS = ['🧼','🍚','🪥','👕','🎒','🧸','🛁','🌙','📖','🚽','💪','🥦','🧹','👋'];
+const REWARD_EMOJIS = ['🍦','🍰','🎁','🛝','🎬','📕','🍩','🎈'];
+const HW_EMOJIS = ['📚','✏️','📖','🔤','🔢','🎵','🖍️','🧩','🗣️','💻'];
+const HW_REWARD_EMOJIS = ['🎁','🧸','🚂','🎮','📕','🍰','🎡','👑'];
+const CHORE_EMOJIS = ['🍽️','🧺','🧹','🛒','🌱','🐟','🧽','📬','🗑️','🧦'];
+const CHORE_REWARD_EMOJIS = ['🍛','🍣','🎁','🍰','🍦','🎮','🎡','📕'];
+// イベントカードの色（淡色背景＋アクセント）を順番に使う
+const TINTS = [
+  ['#eaf2f9', '#5e9ec9'],
+  ['#fdeeec', '#f2766b'],
+  ['#e7f4f0', '#4fae9b'],
+  ['#f1edf9', '#9b8ccb'],
+  ['#fdf4de', '#d9952e']
+];
+const RING_C = 2 * Math.PI * 72; // リング円周
+
+function fmtDate(d) {
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
+function todayStr() { return fmtDate(new Date()); }
+function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+function esc(s) {
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function defaultState() {
+  const t = new Date();
+  const tomorrow = new Date(t); tomorrow.setDate(t.getDate()+1);
+  return {
+    childName: '',
+    city: 'tokyo',
+    weather: '☀️',
+    message: 'きょうも げんきに すごそうね！',
+    stars: 0,
+    reward: { goal: 20, text: 'すきな おやつを えらべる', emoji: '🍦' },
+    events: [
+      { id: uid(), title: 'すいえい', emoji: '🏊', time: '15:30', repeat: 'weekly', weekdays: [t.getDay()] },
+      { id: uid(), title: 'こうえんで あそぶ', emoji: '🛝', time: '10:00', repeat: 'once', date: fmtDate(tomorrow) }
+    ],
+    routines: [
+      { id: uid(), title: 'かおを あらう', emoji: '🧼', period: 'morning' },
+      { id: uid(), title: 'あさごはんを たべる', emoji: '🍚', period: 'morning' },
+      { id: uid(), title: 'はみがき（あさ）', emoji: '🪥', period: 'morning' },
+      { id: uid(), title: 'おきがえ', emoji: '👕', period: 'morning' },
+      { id: uid(), title: 'おもちゃの おかたづけ', emoji: '🧸', period: 'evening' },
+      { id: uid(), title: 'おふろに はいる', emoji: '🛁', period: 'evening' },
+      { id: uid(), title: 'はみがき（よる）', emoji: '🪥', period: 'evening' },
+      { id: uid(), title: 'あしたの じゅんび', emoji: '🎒', period: 'evening' }
+    ],
+    done: {} // { 'YYYY-MM-DD': [routineId, ...] }
+  };
+}
+
+let S;
+try {
+  S = JSON.parse(localStorage.getItem(STORE_KEY)) || defaultState();
+} catch (e) { S = defaultState(); }
+if (!S.city) S.city = 'tokyo'; // 旧バージョンのデータ移行
+if (!S.stamps) S.stamps = {}; // { 'YYYY-MM-DD': true }
+if (!S.sleep) S.sleep = { on: false, start: '20:00', end: '06:00' };
+if (!S.mails) S.mails = []; // 親→子のおてがみ
+S.mails = S.mails.filter(m => m.date >= todayStr()); // 前日までのものは掃除
+if (!S.homework) S.homework = [ // しゅくだい（やることとは別管理）
+  { id: uid(), title: 'こくごの おんどく', emoji: '📖' },
+  { id: uid(), title: 'プリント 1まい', emoji: '✏️' }
+];
+if (S.gems === undefined) S.gems = 0; // 宿題専用ポイント（スターとは別）
+if (!S.hwReward) S.hwReward = { goal: 10, text: 'おもちゃやさんで 1つ えらべる', emoji: '🎁' };
+if (!S.hwDone) S.hwDone = {}; // { 'YYYY-MM-DD': [homeworkId, ...] }
+if (!S.chores) S.chores = [ // おてつだい（💎がたまる）
+  { id: uid(), title: 'おさらを はこぶ', emoji: '🍽️' },
+  { id: uid(), title: 'せんたくものを たたむ', emoji: '🧺' }
+];
+if (S.diamonds === undefined) S.diamonds = 0; // おてつだい専用ポイント
+if (!S.choreReward) S.choreReward = { goal: 10, text: 'すきな ばんごはんを リクエスト', emoji: '🍛' };
+if (!S.choreDone) S.choreDone = {}; // { 'YYYY-MM-DD': [choreId, ...] }
+function save() { localStorage.setItem(STORE_KEY, JSON.stringify(S)); }
+
+/* ---------- 天気の自動取得（Open-Meteo・APIキー不要） ---------- */
+const CITIES = {
+  sapporo:   [43.0618, 141.3545],
+  sendai:    [38.2682, 140.8694],
+  tokyo:     [35.6895, 139.6917],
+  nagoya:    [35.1815, 136.9066],
+  osaka:     [34.6937, 135.5023],
+  hiroshima: [34.3853, 132.4553],
+  fukuoka:   [33.5904, 130.4017],
+  naha:      [26.2124, 127.6809]
+};
+// WMO weather code → 絵文字
+function weatherEmoji(code) {
+  if (code === 0) return '☀️';
+  if (code <= 2) return '🌤️';
+  if (code === 3 || code === 45 || code === 48) return '☁️';
+  if ((code >= 51 && code <= 67) || (code >= 80 && code <= 82)) return '🌧️';
+  if ((code >= 71 && code <= 77) || code === 85 || code === 86) return '⛄';
+  if (code >= 95) return '⛈️';
+  return '☁️';
+}
+function fetchWeather() {
+  if (S.city === 'manual' || !CITIES[S.city]) return;
+  const [lat, lon] = CITIES[S.city];
+  fetch('https://api.open-meteo.com/v1/forecast?latitude=' + lat + '&longitude=' + lon +
+        '&current=weather_code&timezone=Asia%2FTokyo')
+    .then(r => r.json())
+    .then(d => {
+      if (d && d.current && typeof d.current.weather_code === 'number') {
+        S.weather = weatherEmoji(d.current.weather_code);
+        save();
+        renderHeader();
+      }
+    })
+    .catch(() => { /* オフライン時は前回の天気を表示したまま */ });
+}
+
+/* ---------- 時計・日付 ---------- */
+let lastDate = todayStr();
+let lastMinute = -1;
+function tick() {
+  const now = new Date();
+  document.getElementById('clock').innerHTML =
+    now.getHours() + ':' + String(now.getMinutes()).padStart(2,'0') +
+    '<small>' + String(now.getSeconds()).padStart(2,'0') + '</small>';
+  if (todayStr() !== lastDate) { lastDate = todayStr(); renderAll(); }
+  const curMin = now.getHours() * 60 + now.getMinutes();
+  if (curMin !== lastMinute) {
+    lastMinute = curMin;
+    checkEventAlerts();
+    checkSleepWarning();
+    renderNight();
+    deliverDueMail();
+  }
+  if (document.getElementById('nightOverlay').classList.contains('show')) {
+    document.getElementById('nightClock').textContent =
+      now.getHours() + ':' + String(now.getMinutes()).padStart(2, '0');
+  }
+}
+function renderHeader() {
+  const now = new Date();
+  document.getElementById('dateText').textContent =
+    (now.getMonth()+1) + 'がつ ' + now.getDate() + 'にち（' + DOW_JA[now.getDay()] + 'ようび）';
+  const h = now.getHours();
+  let g = h < 11 ? 'おはよう' : h < 17 ? 'こんにちは' : 'こんばんは';
+  if (S.childName) g += '、' + S.childName;
+  g += '！';
+  document.getElementById('greeting').textContent = g;
+  document.getElementById('weatherBox').textContent = S.weather;
+  document.getElementById('messageBox').textContent = '💌 ' + S.message;
+}
+
+/* ---------- よてい ---------- */
+function occursOn(ev, d) {
+  if (ev.repeat === 'weekly') {
+    // 新形式: weekdays配列（複数曜日可）／旧形式: weekday単体も読めるようにしておく
+    const days = ev.weekdays || (ev.weekday !== undefined ? [ev.weekday] : []);
+    return days.includes(d.getDay());
+  }
+  return ev.date === fmtDate(d);
+}
+function eventsFor(d) {
+  return S.events.filter(ev => occursOn(ev, d)).sort((a,b) => a.time.localeCompare(b.time));
+}
+function renderToday() {
+  const list = document.getElementById('todayList');
+  const evs = eventsFor(new Date());
+  if (evs.length === 0) {
+    list.innerHTML = '<div class="empty-note">きょうの よていは ないよ 🎈<br>ゆっくり すごそうね</div>';
+    return;
+  }
+  list.innerHTML = evs.map((ev,i) => {
+    const [tint, accent] = TINTS[i % TINTS.length];
+    return '<div class="event-card" style="--tint:' + tint + ';--accent:' + accent + ';animation-delay:' + (i*0.07) + 's">' +
+      '<span class="event-time">' + esc(ev.time) + '</span>' +
+      '<span class="event-emoji">' + esc(ev.emoji) + '</span>' +
+      '<span class="event-title">' + esc(ev.title) + '</span>' +
+    '</div>';
+  }).join('');
+}
+function renderWeek() {
+  const grid = document.getElementById('weekGrid');
+  let html = '';
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(); d.setDate(d.getDate() + i);
+    const dow = d.getDay();
+    const cls = dow === 0 ? 'sun' : dow === 6 ? 'sat' : '';
+    const evs = eventsFor(d);
+    html += '<div class="day-col' + (i===0 ? ' today-col' : '') + '">' +
+      '<div class="day-head ' + cls + '"><span class="num">' + d.getDate() + '</span><span class="dow">' + DOW_JA[dow] + '</span></div>' +
+      evs.map(ev => '<div class="chip">' + esc(ev.emoji) + ' ' + esc(ev.title) + '</div>').join('') +
+    '</div>';
+  }
+  grid.innerHTML = html;
+}
+const VIEWS = { today: ['tabToday', 'todayView'], week: ['tabWeek', 'weekView'], stamp: ['tabStamp', 'stampView'] };
+function switchView(v) {
+  Object.entries(VIEWS).forEach(([k, [tabId, viewId]]) => {
+    document.getElementById(tabId).classList.toggle('active', k === v);
+    document.getElementById(viewId).style.display = k === v ? 'block' : 'none';
+  });
+}
+document.getElementById('tabToday').onclick = () => switchView('today');
+document.getElementById('tabWeek').onclick = () => switchView('week');
+document.getElementById('tabStamp').onclick = () => switchView('stamp');
+
+/* ---------- スタンプカード ---------- */
+function renderStamps() {
+  const now = new Date();
+  const y = now.getFullYear(), mo = now.getMonth();
+  const firstDow = new Date(y, mo, 1).getDay();
+  const days = new Date(y, mo + 1, 0).getDate();
+  let count = 0;
+  let html = DOW_JA.map(d => '<div class="stamp-dow">' + d + '</div>').join('');
+  for (let i = 0; i < firstDow; i++) html += '<div class="stamp-cell empty"></div>';
+  for (let d = 1; d <= days; d++) {
+    const ds = y + '-' + String(mo + 1).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+    const got = !!S.stamps[ds];
+    if (got) count++;
+    html += '<div class="stamp-cell' + (d === now.getDate() ? ' today' : '') + '">' +
+      '<span class="d">' + d + '</span>' + (got ? '<span class="mark">💮</span>' : '') + '</div>';
+  }
+  document.getElementById('stampGrid').innerHTML = html;
+  document.getElementById('stampHead').innerHTML =
+    '<span>' + (mo + 1) + 'がつの スタンプカード</span><span style="color:#e8a200;">💮 × ' + count + '</span>';
+}
+// その日のやることが全部できたらスタンプを押す（一度もらったら消えない）
+function awardStampIfComplete() {
+  if (S.stamps[todayStr()]) return false;
+  if (S.routines.length === 0) return false;
+  const done = doneToday();
+  if (S.routines.every(x => done.includes(x.id))) {
+    S.stamps[todayStr()] = true;
+    renderStamps();
+    return true;
+  }
+  return false;
+}
+
+/* ---------- やること ---------- */
+function doneToday() {
+  if (!S.done[todayStr()]) S.done[todayStr()] = [];
+  return S.done[todayStr()];
+}
+function renderRoutines() {
+  const h = new Date().getHours();
+  const nowPeriod = h < 12 ? 'morning' : 'evening';
+  const done = doneToday();
+  const wrap = document.getElementById('routineList');
+  let html = '';
+  [['morning','🌅 あさ'], ['evening','🌙 よる']].forEach(([p, label]) => {
+    const items = S.routines.filter(r => r.period === p);
+    if (items.length === 0) return;
+    html += '<div class="routine-group-title">' + label +
+      (p === nowPeriod ? '<span class="now-badge">いまは ここ！</span>' : '') + '</div>';
+    html += items.map(r => {
+      const isDone = done.includes(r.id);
+      return '<div class="routine-card' + (isDone ? ' done' : '') + '" data-id="' + r.id + '">' +
+        '<span class="routine-emoji">' + esc(r.emoji) + '</span>' +
+        '<span class="routine-title">' + esc(r.title) + '</span>' +
+        '<span class="routine-check">✓</span>' +
+      '</div>';
+    }).join('');
+  });
+  wrap.innerHTML = html || '<div class="empty-note">やることが まだ ないよ</div>';
+  wrap.querySelectorAll('.routine-card').forEach(el => {
+    el.addEventListener('click', e => toggleRoutine(el.dataset.id, e));
+  });
+}
+function toggleRoutine(id, e) {
+  const done = doneToday();
+  const idx = done.indexOf(id);
+  if (idx >= 0) {
+    done.splice(idx, 1);
+    S.stars = Math.max(0, S.stars - 1);
+  } else {
+    done.push(id);
+    S.stars += 1;
+    burstStars(e.clientX, e.clientY);
+    const r = S.routines.find(x => x.id === id);
+    // スタンプ獲得 ＞ あさ/よる全部できた ＞ ふつうのほめ言葉 の順で優先
+    if (awardStampIfComplete()) {
+      showPraise('💮', 'スタンプ ゲット！', 'きょうの やること ぜんぶ できたね！\nスタンプカードに 💮 を おしたよ！');
+      tigerSay(fillMsg(pick(TIGER_ALLDONE)), 20000);
+    } else {
+      const allDone = checkPeriodComplete(id);
+      if (allDone) {
+        tigerSay(fillMsg(pick(TIGER_ALLDONE)), 20000);
+      } else if (r) {
+        tigerSay(fillMsg(pick(TIGER_DONE), r.title), 8000);
+      }
+    }
+    checkRewardReached();
+  }
+  save();
+  renderRoutines();
+  renderStars();
+}
+function checkPeriodComplete(lastId) {
+  const r = S.routines.find(x => x.id === lastId);
+  if (!r) return false;
+  const done = doneToday();
+  const all = S.routines.filter(x => x.period === r.period);
+  if (all.length > 0 && all.every(x => done.includes(x.id))) {
+    const label = r.period === 'morning' ? 'あさの' : 'よるの';
+    showPraise('🌟', 'すごい！', label + ' やること ぜんぶ できたね！');
+    return true;
+  }
+  return false;
+}
+function checkRewardReached() {
+  if (S.stars === S.reward.goal) {
+    showPraise(S.reward.emoji, 'ごほうび ゲット！', 'スターが ' + S.reward.goal + 'こ たまったよ！\n「' + S.reward.text + '」と こうかんできるよ🎁');
+  }
+}
+
+/* ---------- しゅくだい（❤️はスターと別にたまる） ---------- */
+const HW_DONE_MSGS = [
+  'しゅくだい「{title}」できたね！えらすぎる！❤️ゲット！',
+  '{cry} がんばりやさんだね！ハートが たまったよ！',
+  'すごい！「{title}」かんりょう！あたまが ぴかぴかだ！'
+];
+const HW_ALLDONE_MSGS = [
+  'しゅくだい ぜんぶ おわった！てんさいだ〜！{cry}❤️✨',
+  'ぜんぶ できた！とくべつな ごほうびに ちかづいたよ！🎁',
+  'パーフェクト！べんきょうの チャンピオンだ！{cry}'
+];
+function hwDoneToday() {
+  if (!S.hwDone[todayStr()]) S.hwDone[todayStr()] = [];
+  return S.hwDone[todayStr()];
+}
+function renderHomework() {
+  const done = hwDoneToday();
+  const wrap = document.getElementById('homeworkList');
+  wrap.innerHTML = S.homework.map(h => {
+    const isDone = done.includes(h.id);
+    return '<div class="routine-card hw-card' + (isDone ? ' done' : '') + '" data-id="' + h.id + '">' +
+      '<span class="routine-emoji">' + esc(h.emoji) + '</span>' +
+      '<span class="routine-title">' + esc(h.title) + '</span>' +
+      '<span class="routine-check">✓</span>' +
+    '</div>';
+  }).join('') || '<div class="empty-note">きょうの しゅくだいは ないよ 🎈</div>';
+  wrap.querySelectorAll('.hw-card').forEach(el => {
+    el.addEventListener('click', e => toggleHomework(el.dataset.id, e));
+  });
+}
+function toggleHomework(id, e) {
+  const done = hwDoneToday();
+  const idx = done.indexOf(id);
+  if (idx >= 0) {
+    done.splice(idx, 1);
+    S.gems = Math.max(0, S.gems - 1);
+  } else {
+    done.push(id);
+    S.gems += 1;
+    burstStars(e.clientX, e.clientY, ['❤️','💖','💗']);
+    const h = S.homework.find(x => x.id === id);
+    if (S.homework.every(x => done.includes(x.id))) {
+      showPraise('❤️', 'しゅくだい ぜんぶ できた！', 'きょうの しゅくだい コンプリート！\nハートが たまっていくよ！');
+      tigerSay(fillMsg(pick(HW_ALLDONE_MSGS)), 20000);
+    } else if (h) {
+      tigerSay(fillMsg(pick(HW_DONE_MSGS), h.title), 8000);
+    }
+    if (S.gems === S.hwReward.goal) {
+      showPraise(S.hwReward.emoji, 'とくべつ ごほうび ゲット！', 'ハートが ' + S.hwReward.goal + 'こ たまったよ！\n「' + S.hwReward.text + '」と こうかんできるよ！');
+    }
+  }
+  save();
+  renderHomework();
+  renderGems();
+}
+function renderGems() {
+  document.getElementById('gemCount').textContent = '❤️ × ' + S.gems;
+  const ratio = S.hwReward.goal > 0 ? Math.min(1, S.gems / S.hwReward.goal) : 0;
+  document.getElementById('gemBarFg').style.width = (ratio * 100) + '%';
+  const remain = Math.max(0, S.hwReward.goal - S.gems);
+  const rt = document.getElementById('hwRewardText');
+  if (remain === 0) {
+    rt.textContent = S.hwReward.emoji + ' とくべつごほうび「' + S.hwReward.text + '」と こうかんできるよ！';
+    rt.classList.add('ready');
+  } else {
+    rt.textContent = 'あと ❤️' + remain + 'こで ' + S.hwReward.emoji + '「' + S.hwReward.text + '」';
+    rt.classList.remove('ready');
+  }
+}
+
+/* ---------- スター ---------- */
+function renderStars() {
+  document.getElementById('starNum').textContent = S.stars;
+  const ratio = S.reward.goal > 0 ? Math.min(1, S.stars / S.reward.goal) : 0;
+  const ring = document.getElementById('ringFg');
+  ring.style.strokeDasharray = RING_C;
+  ring.style.strokeDashoffset = RING_C * (1 - ratio);
+  const remain = Math.max(0, S.reward.goal - S.stars);
+  const rt = document.getElementById('rewardText');
+  if (remain === 0) {
+    rt.textContent = S.reward.emoji + ' 「' + S.reward.text + '」と こうかんできるよ！';
+    rt.classList.add('ready');
+  } else {
+    rt.textContent = 'あと ' + remain + 'こで ' + S.reward.emoji + ' 「' + S.reward.text + '」';
+    rt.classList.remove('ready');
+  }
+}
+function burstStars(x, y, chars) {
+  const set = chars || ['⭐','✨','🌟'];
+  for (let i = 0; i < 8; i++) {
+    const el = document.createElement('div');
+    el.className = 'fly-star';
+    el.textContent = set[i % set.length];
+    el.style.left = (x || innerWidth/2) + 'px';
+    el.style.top = (y || innerHeight/2) + 'px';
+    el.style.setProperty('--dx', (Math.random()*240 - 120) + 'px');
+    el.style.setProperty('--dy', (Math.random()*-200 - 40) + 'px');
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 1000);
+  }
+}
+
+/* ---------- おてつだい（💎はスター・❤️と別にたまる） ---------- */
+const CH_DONE_MSGS = [
+  'おてつだい「{title}」ありがとう！💎ゲット！',
+  '{cry} たすかったよ〜！ありがとう！',
+  '「{title}」できたね！おうちの ヒーローだ！'
+];
+const CH_ALLDONE_MSGS = [
+  'おてつだい ぜんぶ できた！かぞくの ヒーローだ！{cry}💎✨',
+  'すごい！ぜんぶ おわったよ！みんな よろこんでるよ！🎉',
+  'おてつだいマスターだ！{name}も みならわなきゃ！'
+];
+function choreDoneToday() {
+  if (!S.choreDone[todayStr()]) S.choreDone[todayStr()] = [];
+  return S.choreDone[todayStr()];
+}
+function renderChores() {
+  const done = choreDoneToday();
+  const wrap = document.getElementById('choresList');
+  wrap.innerHTML = S.chores.map(c => {
+    const isDone = done.includes(c.id);
+    return '<div class="routine-card chore-card' + (isDone ? ' done' : '') + '" data-id="' + c.id + '">' +
+      '<span class="routine-emoji">' + esc(c.emoji) + '</span>' +
+      '<span class="routine-title">' + esc(c.title) + '</span>' +
+      '<span class="routine-check">✓</span>' +
+    '</div>';
+  }).join('') || '<div class="empty-note">きょうの おてつだいは ないよ 🎈</div>';
+  wrap.querySelectorAll('.chore-card').forEach(el => {
+    el.addEventListener('click', e => toggleChore(el.dataset.id, e));
+  });
+}
+function toggleChore(id, e) {
+  const done = choreDoneToday();
+  const idx = done.indexOf(id);
+  if (idx >= 0) {
+    done.splice(idx, 1);
+    S.diamonds = Math.max(0, S.diamonds - 1);
+  } else {
+    done.push(id);
+    S.diamonds += 1;
+    burstStars(e.clientX, e.clientY, ['💎','✨','💠']);
+    const c = S.chores.find(x => x.id === id);
+    if (S.chores.every(x => done.includes(x.id))) {
+      showPraise('💎', 'おてつだい ぜんぶ できた！', 'きょうの おてつだい コンプリート！\nダイヤが たまっていくよ！');
+      tigerSay(fillMsg(pick(CH_ALLDONE_MSGS)), 20000);
+    } else if (c) {
+      tigerSay(fillMsg(pick(CH_DONE_MSGS), c.title), 8000);
+    }
+    if (S.diamonds === S.choreReward.goal) {
+      showPraise(S.choreReward.emoji, 'ごほうび ゲット！', 'ダイヤが ' + S.choreReward.goal + 'こ たまったよ！\n「' + S.choreReward.text + '」と こうかんできるよ！');
+    }
+  }
+  save();
+  renderChores();
+  renderDias();
+}
+function renderDias() {
+  document.getElementById('diaCount').textContent = '💎 × ' + S.diamonds;
+  const ratio = S.choreReward.goal > 0 ? Math.min(1, S.diamonds / S.choreReward.goal) : 0;
+  document.getElementById('diaBarFg').style.width = (ratio * 100) + '%';
+  const remain = Math.max(0, S.choreReward.goal - S.diamonds);
+  const rt = document.getElementById('choreRewardText');
+  if (remain === 0) {
+    rt.textContent = S.choreReward.emoji + ' ごほうび「' + S.choreReward.text + '」と こうかんできるよ！';
+    rt.classList.add('ready');
+  } else {
+    rt.textContent = 'あと 💎' + remain + 'こで ' + S.choreReward.emoji + '「' + S.choreReward.text + '」';
+    rt.classList.remove('ready');
+  }
+}
+
+/* ---------- 曜日のおともだち（日〜土） ---------- */
+const EYES = '<g class="tiger-eyes"><circle cx="43" cy="61" r="6" fill="#3f3a36"/><circle cx="77" cy="61" r="6" fill="#3f3a36"/><circle cx="45" cy="59" r="2.1" fill="#fff"/><circle cx="79" cy="59" r="2.1" fill="#fff"/></g>';
+const BLUSH = '<ellipse cx="29" cy="77" rx="7" ry="5" fill="#fbc6b4" opacity=".9"/><ellipse cx="91" cy="77" rx="7" ry="5" fill="#fbc6b4" opacity=".9"/>';
+const SVG_OPEN = '<svg viewBox="0 0 120 118" xmlns="http://www.w3.org/2000/svg">';
+
+const BUDDIES = [
+  { // 日曜：うさぎ
+    label: 'うさぎ', name: 'ぴょんこ', cry: 'ぴょんぴょん！',
+    svg: SVG_OPEN +
+      '<ellipse cx="40" cy="22" rx="10.5" ry="23" fill="#fff" stroke="#ecdfd3" stroke-width="2" transform="rotate(-10 40 22)"/>' +
+      '<ellipse cx="80" cy="22" rx="10.5" ry="23" fill="#fff" stroke="#ecdfd3" stroke-width="2" transform="rotate(10 80 22)"/>' +
+      '<ellipse cx="40" cy="26" rx="4.5" ry="14" fill="#fbd4d4" transform="rotate(-10 40 26)"/>' +
+      '<ellipse cx="80" cy="26" rx="4.5" ry="14" fill="#fbd4d4" transform="rotate(10 80 26)"/>' +
+      '<ellipse cx="60" cy="67" rx="45" ry="42" fill="#fff" stroke="#ecdfd3" stroke-width="2"/>' +
+      EYES + BLUSH +
+      '<path d="M56 72 h8 a1.8 1.8 0 0 1 1.4 2.9 l-4 4.8 a1.8 1.8 0 0 1 -2.8 0 l-4 -4.8 A1.8 1.8 0 0 1 56 72 z" fill="#f29aa0"/>' +
+      '<path d="M60 80 v3 M60 83 q-4.5 5 -10 1.5 M60 83 q4.5 5 10 1.5" stroke="#d98b91" stroke-width="2.4" fill="none" stroke-linecap="round"/>' +
+      '</svg>'
+  },
+  { // 月曜：ペンギン
+    label: 'ペンギン', name: 'ぺんた', cry: 'ぺたぺた！',
+    svg: SVG_OPEN +
+      '<ellipse cx="60" cy="64" rx="46" ry="43" fill="#4d5b6a"/>' +
+      '<circle cx="43" cy="58" r="14" fill="#fff8ee"/>' +
+      '<circle cx="77" cy="58" r="14" fill="#fff8ee"/>' +
+      '<ellipse cx="60" cy="76" rx="32" ry="26" fill="#fff8ee"/>' +
+      EYES + BLUSH +
+      '<path d="M53 70 h14 a2 2 0 0 1 1.6 3.2 l-5.6 7 a2 2 0 0 1 -3.2 0 l-5.6 -7 A2 2 0 0 1 53 70 z" fill="#f2a23c"/>' +
+      '</svg>'
+  },
+  { // 火曜：コアラ
+    label: 'コアラ', name: 'こあすけ', cry: 'こあこあ〜！',
+    svg: SVG_OPEN +
+      '<circle cx="17" cy="44" r="17" fill="#9fa4a8"/><circle cx="103" cy="44" r="17" fill="#9fa4a8"/>' +
+      '<circle cx="17" cy="44" r="9" fill="#e9cdd6"/><circle cx="103" cy="44" r="9" fill="#e9cdd6"/>' +
+      '<ellipse cx="60" cy="66" rx="44" ry="42" fill="#b4b9bd"/>' +
+      EYES + BLUSH +
+      '<ellipse cx="60" cy="73" rx="9.5" ry="12.5" fill="#5d5852"/>' +
+      '<ellipse cx="57" cy="68" rx="2.5" ry="3.5" fill="#7a756e"/>' +
+      '<path d="M60 90 q-4 3 -8 1 M60 90 q4 3 8 1" stroke="#8c8780" stroke-width="2.2" fill="none" stroke-linecap="round"/>' +
+      '</svg>'
+  },
+  { // 水曜：とら
+    label: 'とら', name: 'とらまる', cry: 'がおー！',
+    svg: SVG_OPEN +
+      '<circle cx="26" cy="25" r="15" fill="#ef9f43"/><circle cx="94" cy="25" r="15" fill="#ef9f43"/>' +
+      '<circle cx="26" cy="25" r="7.5" fill="#ffd9a8"/><circle cx="94" cy="25" r="7.5" fill="#ffd9a8"/>' +
+      '<ellipse cx="60" cy="65" rx="47" ry="44" fill="#f5a94b"/>' +
+      '<rect x="57" y="24" width="6" height="17" rx="3" fill="#6b4a2f"/>' +
+      '<rect x="44" y="27" width="5" height="13" rx="2.5" fill="#6b4a2f" transform="rotate(-14 46.5 33.5)"/>' +
+      '<rect x="71" y="27" width="5" height="13" rx="2.5" fill="#6b4a2f" transform="rotate(14 73.5 33.5)"/>' +
+      '<rect x="14" y="56" width="13" height="5" rx="2.5" fill="#6b4a2f"/><rect x="16" y="66" width="11" height="5" rx="2.5" fill="#6b4a2f"/>' +
+      '<rect x="93" y="56" width="13" height="5" rx="2.5" fill="#6b4a2f"/><rect x="93" y="66" width="11" height="5" rx="2.5" fill="#6b4a2f"/>' +
+      '<ellipse cx="60" cy="80" rx="25" ry="19" fill="#fff6e9"/>' +
+      EYES + BLUSH +
+      '<path d="M55 74 h10 a2 2 0 0 1 1.6 3.2 l-5 6 a2 2 0 0 1 -3.2 0 l-5 -6 A2 2 0 0 1 55 74 z" fill="#8a5a3b"/>' +
+      '<path d="M60 83 v4 M60 87 q-5 6 -11 2 M60 87 q5 6 11 2" stroke="#8a5a3b" stroke-width="2.5" fill="none" stroke-linecap="round"/>' +
+      '<path d="M10 74 q11 -1 18 2 M12 84 q10 -3 17 0" stroke="#e0b184" stroke-width="2.2" fill="none" stroke-linecap="round"/>' +
+      '<path d="M110 74 q-11 -1 -18 2 M108 84 q-10 -3 -17 0" stroke="#e0b184" stroke-width="2.2" fill="none" stroke-linecap="round"/>' +
+      '</svg>'
+  },
+  { // 木曜：キリン
+    label: 'キリン', name: 'きりりん', cry: 'のびのび〜！',
+    svg: SVG_OPEN +
+      '<path d="M46 10 v12 M74 10 v12" stroke="#c08542" stroke-width="5" stroke-linecap="round"/>' +
+      '<circle cx="46" cy="9" r="5.5" fill="#8a5a3b"/><circle cx="74" cy="9" r="5.5" fill="#8a5a3b"/>' +
+      '<ellipse cx="15" cy="40" rx="12" ry="7" fill="#f5ca55" transform="rotate(-25 15 40)"/>' +
+      '<ellipse cx="105" cy="40" rx="12" ry="7" fill="#f5ca55" transform="rotate(25 105 40)"/>' +
+      '<ellipse cx="60" cy="66" rx="45" ry="42" fill="#f5ca55"/>' +
+      '<ellipse cx="27" cy="46" rx="9" ry="7" fill="#eda93f" opacity=".8"/>' +
+      '<ellipse cx="92" cy="42" rx="8" ry="6" fill="#eda93f" opacity=".8"/>' +
+      '<ellipse cx="21" cy="86" rx="7" ry="6" fill="#eda93f" opacity=".8"/>' +
+      '<ellipse cx="98" cy="84" rx="8" ry="6" fill="#eda93f" opacity=".8"/>' +
+      '<ellipse cx="60" cy="81" rx="24" ry="17" fill="#fdeec8"/>' +
+      EYES + BLUSH +
+      '<circle cx="52" cy="78" r="2.5" fill="#a8763e"/><circle cx="68" cy="78" r="2.5" fill="#a8763e"/>' +
+      '<path d="M52 88 q8 6 16 0" stroke="#a8763e" stroke-width="2.5" fill="none" stroke-linecap="round"/>' +
+      '</svg>'
+  },
+  { // 金曜：りす
+    label: 'りす', name: 'くるりん', cry: 'くるくる！',
+    svg: SVG_OPEN +
+      '<path d="M93 92 q30 -4 26 -36 q-4 -26 -30 -28 q16 12 14 32 q-2 18 -16 24 z" fill="#b87a3e"/>' +
+      '<ellipse cx="32" cy="22" rx="8" ry="13" fill="#dca25c" transform="rotate(-15 32 22)"/>' +
+      '<ellipse cx="88" cy="22" rx="8" ry="13" fill="#dca25c" transform="rotate(15 88 22)"/>' +
+      '<ellipse cx="33" cy="25" rx="4" ry="8" fill="#fdf2dc" transform="rotate(-15 33 25)"/>' +
+      '<ellipse cx="87" cy="25" rx="4" ry="8" fill="#fdf2dc" transform="rotate(15 87 25)"/>' +
+      '<ellipse cx="60" cy="66" rx="44" ry="41" fill="#dca25c"/>' +
+      '<ellipse cx="60" cy="79" rx="23" ry="17" fill="#fdf2dc"/>' +
+      EYES + BLUSH +
+      '<path d="M56 73 h8 a1.8 1.8 0 0 1 1.4 2.9 l-4 4.8 a1.8 1.8 0 0 1 -2.8 0 l-4 -4.8 A1.8 1.8 0 0 1 56 73 z" fill="#8a5a3b"/>' +
+      '<path d="M60 81 v3 M60 84 q-4.5 5 -10 1.5 M60 84 q4.5 5 10 1.5" stroke="#8a5a3b" stroke-width="2.4" fill="none" stroke-linecap="round"/>' +
+      '</svg>'
+  },
+  { // 土曜：パンダ
+    label: 'パンダ', name: 'ぱんまる', cry: 'もぐもぐ！',
+    svg: SVG_OPEN +
+      '<circle cx="24" cy="24" r="15" fill="#3f3a36"/><circle cx="96" cy="24" r="15" fill="#3f3a36"/>' +
+      '<ellipse cx="60" cy="66" rx="46" ry="42" fill="#fff" stroke="#e8e0d6" stroke-width="2"/>' +
+      '<ellipse cx="42" cy="60" rx="11.5" ry="14" fill="#3f3a36" transform="rotate(-12 42 60)"/>' +
+      '<ellipse cx="78" cy="60" rx="11.5" ry="14" fill="#3f3a36" transform="rotate(12 78 60)"/>' +
+      '<g class="tiger-eyes"><circle cx="43" cy="59" r="4.6" fill="#fff"/><circle cx="77" cy="59" r="4.6" fill="#fff"/><circle cx="44" cy="60" r="2.4" fill="#3f3a36"/><circle cx="76" cy="60" r="2.4" fill="#3f3a36"/></g>' +
+      BLUSH +
+      '<path d="M56 76 h8 a2 2 0 0 1 1.6 3.2 l-4 5 a2 2 0 0 1 -3.2 0 l-4 -5 A2 2 0 0 1 56 76 z" fill="#3f3a36"/>' +
+      '<path d="M60 85 v3 M60 88 q-5 5 -10 1.5 M60 88 q5 5 10 1.5" stroke="#6b665f" stroke-width="2.4" fill="none" stroke-linecap="round"/>' +
+      '</svg>'
+  }
+];
+function BUDDY() { return BUDDIES[new Date().getDay()]; }
+function renderBuddy() {
+  const b = BUDDY();
+  const el = document.getElementById('tiger');
+  el.innerHTML = b.svg;
+  el.title = 'きょうのおともだち：' + b.label + 'の ' + b.name + '。タップしてみてね';
+}
+
+/* ---------- 月ごとの きせつの背景 ---------- */
+// g: 背景グラデーション, b: ぼかし光の色, deco: 飾り(hueで色変え可), fall: 降りもの
+// ※天気と紛らわしいもの（雨・雪・傘・雪だるま等）は使わない。季節の行事・動植物のみ。
+const MONTH_THEMES = {
+  1:  { g: ['#fbf9f3','#edf3fa'], b: ['#f3e6c8','#dceaf6'], deco: ['🎍','🪁','🍊','🎌'], fall: { ch: '✨', n: 6, dur: [7,12], size: [10,16], op: .45 } },
+  2:  { g: ['#fdf8f5','#eef3f9'], b: ['#f8e0d8','#dfeaf6'], deco: ['👹','🍫','💝',{ch:'🌸',hue:-20}], fall: null },
+  3:  { g: ['#fdf8f1','#fcf0f3'], b: ['#fbe2e9','#f6ebcd'], deco: ['🎎','🌷','🦋','🌼'], fall: null },
+  4:  { g: ['#fdf6f7','#f4f1fa'], b: ['#fbdce6','#e2e6f8'], deco: ['🌸','🌷','🐝','🦋'], fall: { ch: '🌸', n: 8, dur: [7,12], size: [14,22], op: .55 } },
+  5:  { g: ['#f4faf2','#ecf6fb'], b: ['#d8efd2','#d3ebf8'], deco: ['🎏','🍀','🌿','🐞'], fall: null },
+  6:  { g: ['#f1f4f9','#f1f0f8'], b: ['#d8e3f2','#e3ddf1'], deco: [{ch:'🌸',hue:210},'🐸','🐌',{ch:'🌸',hue:240}], fall: null },
+  7:  { g: ['#eef7fc','#f4f1fa'], b: ['#cde8f6','#e3dcf4'], deco: ['🎋','⭐','🍉','🎐'], fall: { ch: '✨', n: 7, dur: [6,10], size: [10,16], op: .5 } },
+  8:  { g: ['#fdf9ec','#ebf7fc'], b: ['#fae8b6','#cdeaf6'], deco: ['🌻','🍉','🎐','🍧'], fall: null },
+  9:  { g: ['#fdf8ee','#f4f0e7'], b: ['#f6e2bf','#e5e2cf'], deco: ['🌕','🐇','🍡','🌾'], fall: null },
+  10: { g: ['#fdf5e9','#f8eee2'], b: ['#f8dcb4','#f1d8c6'], deco: ['🎃','👻','🍁','🦇'], fall: { ch: '🍁', n: 8, dur: [7,12], size: [13,20], op: .5 } },
+  11: { g: ['#fcf4e9','#f6eee3'], b: ['#f3d8b6','#ebd8c6'], deco: ['🍁','🍂','🌰','🦔'], fall: { ch: '🍂', n: 9, dur: [7,12], size: [13,20], op: .5 } },
+  12: { g: ['#f4f8fb','#fdf4f4'], b: ['#d6e5f4','#f8dada'], deco: ['🎄','🎅','🔔','🎁'], fall: { ch: '✨', n: 8, dur: [7,12], size: [10,16], op: .45 } }
+};
+function renderSeason() {
+  const t = MONTH_THEMES[new Date().getMonth() + 1];
+  document.body.style.background = 'linear-gradient(165deg, ' + t.g[0] + ' 0%, ' + t.g[1] + ' 100%)';
+  document.body.style.setProperty('--blob1', t.b[0]);
+  document.body.style.setProperty('--blob2', t.b[1]);
+  const slots = ['left:1.5%;top:28%;', 'left:5%;bottom:6%;', 'right:2.5%;top:30%;', 'left:32%;bottom:2.5%;'];
+  let html = '';
+  t.deco.slice(0, slots.length).forEach((d, i) => {
+    const o = typeof d === 'string' ? { ch: d } : d;
+    const filt = o.hue ? 'filter:hue-rotate(' + o.hue + 'deg) saturate(1.3);' : '';
+    html += '<span class="season-deco" style="' + slots[i] + filt +
+      'font-size:clamp(34px,5vw,58px);animation-delay:' + (i * 1.4) + 's">' + o.ch + '</span>';
+  });
+  if (t.fall) {
+    const f = t.fall;
+    for (let i = 0; i < f.n; i++) {
+      const dur = (f.dur[0] + Math.random() * (f.dur[1] - f.dur[0])).toFixed(2);
+      html += '<span class="season-fall" style="left:' + (Math.random() * 100).toFixed(1) + '%;' +
+        'font-size:' + Math.round(f.size[0] + Math.random() * (f.size[1] - f.size[0])) + 'px;' +
+        'opacity:' + f.op + ';' +
+        '--sway:' + Math.round(Math.random() * 60 - 30) + 'px;' +
+        '--rot:' + Math.round(Math.random() * 240 - 120) + 'deg;' +
+        'animation-duration:' + dur + 's;animation-delay:-' + (Math.random() * dur).toFixed(2) + 's">' + f.ch + '</span>';
+    }
+  }
+  document.getElementById('seasonBg').innerHTML = html;
+}
+
+/* ---------- おともだちのセリフ ---------- */
+const TIGER_PRE = [
+  'もうすぐ「{title}」の じかんだよ！じゅんびは いいかな？',
+  'あと すこしで「{title}」だよ！{cry}',
+  '「{title}」が もうすぐ はじまるよ！じゅんび じゅんび！'
+];
+const TIGER_NOW = [
+  '「{title}」の じかんだよ！いってらっしゃい！',
+  'ピピーン！「{title}」の じかんに なったよ！',
+  'さあ「{title}」だよ！{name}も おうえんしてるよ！{cry}'
+];
+const TIGER_DONE = [
+  '「{title}」できたね！えらい！⭐',
+  '{cry} 「{title}」かんりょう！すごいぞ！',
+  'やったね！スター ゲットだよ！✨',
+  'その ちょうし！{name}も うれしいよ！',
+  'ぴかぴか〜！「{title}」ばっちりだね！'
+];
+const TIGER_ALLDONE = [
+  'ぜーんぶ できた！きみは チャンピオンだ！{cry}🏆',
+  'すごい！ぜんぶ かんりょう！{name} かんどうしたよ…！✨',
+  'パーフェクト！きょうの きみは サイコーだ！{cry}🌟'
+];
+const TIGER_CHEER = [
+  'きょうも いっしょに がんばろうね！{cry}',
+  'やることを タップすると スターが もらえるよ⭐',
+  '{name}は いつでも みまもってるよ！',
+  'スターを あつめて ごほうびを ゲットしよう！'
+];
+function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+function fillMsg(s, title) {
+  const b = BUDDY();
+  return s.replace(/\{title\}/g, title || '').replace(/\{name\}/g, b.name).replace(/\{cry\}/g, b.cry);
+}
+
+let bubbleTimer = null;
+function tigerSay(msg, dur) {
+  const b = document.getElementById('speechBubble');
+  document.getElementById('speechText').textContent = msg;
+  b.classList.remove('show');
+  void b.offsetWidth; // アニメーションをリスタート
+  b.classList.add('show');
+  const t = document.getElementById('tiger');
+  t.classList.add('talking');
+  setTimeout(() => t.classList.remove('talking'), 1900);
+  clearTimeout(bubbleTimer);
+  bubbleTimer = setTimeout(() => b.classList.remove('show'), dur || 15000);
+  chime();
+}
+
+// 予定時刻のお知らせ（10分前と時間ちょうど）
+function checkEventAlerts() {
+  const now = new Date();
+  const today = todayStr();
+  if (!S.notified || !S.notified[today]) S.notified = { [today]: {} }; // 古い日付は捨てる
+  const ntoday = S.notified[today];
+  const hm = now.getHours() * 60 + now.getMinutes();
+  let changed = false;
+  eventsFor(now).forEach(ev => {
+    const [h, m] = ev.time.split(':').map(Number);
+    const evMin = h * 60 + m;
+    const flags = ntoday[ev.id] || (ntoday[ev.id] = []);
+    if (!flags.includes('now') && hm >= evMin && hm < evMin + 15) {
+      flags.push('now'); changed = true;
+      tigerSay(fillMsg(pick(TIGER_NOW), ev.title) + ' ' + ev.emoji, 60000);
+    } else if (!flags.includes('pre') && hm >= evMin - 10 && hm < evMin) {
+      flags.push('pre'); changed = true;
+      tigerSay(fillMsg(pick(TIGER_PRE), ev.title) + ' ' + ev.emoji, 60000);
+    }
+  });
+  if (changed) save();
+}
+
+/* ---------- おうちのひとからの おてがみ ---------- */
+// とどけるべき おてがみが あれば1通とどける（とどけたら true）
+function deliverDueMail() {
+  const now = new Date();
+  const hm = now.getHours() * 60 + now.getMinutes();
+  const due = S.mails.find(m => !m.delivered && m.date === todayStr() && (!m.time || hmOf(m.time) <= hm));
+  if (!due || buddyState() === 'sleeping') return false; // 熟睡中は配信を保留（眠い時間帯は届ける）
+  due.delivered = true;
+  save();
+  tigerSay('💌 おうちのひとから おてがみ！「' + due.text + '」だって！', 60000);
+  return true;
+}
+
+const SLEEPY_MSGS = [
+  'ふぁ〜あ… {name}は もう ねむいよ…きみも ねるじゅんびを しようね💤',
+  'むにゃむにゃ… もう ねるじかんだよ…また あした あそぼうね💤',
+  '{cry}…じゃなくて… ふぁ〜あ… おやすみなさい…💤'
+];
+/* ---------- 連打コンボ（連続タップでリアクションがエスカレート） ---------- */
+let tapCount = 0, tapTimer = null;
+function comboSay(msg, dur) { // チャイムなしの短い吹き出し（連打用）
+  const b = document.getElementById('speechBubble');
+  document.getElementById('speechText').textContent = msg;
+  b.classList.remove('show');
+  void b.offsetWidth;
+  b.classList.add('show');
+  clearTimeout(bubbleTimer);
+  bubbleTimer = setTimeout(() => b.classList.remove('show'), dur || 2500);
+}
+function popSound(n) { // 連打するほど音が高くなるポップ音
+  if (!audioCtx || audioCtx.state !== 'running') return;
+  const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+  o.type = 'sine';
+  o.frequency.value = Math.min(1500, 420 + n * 70);
+  const t0 = audioCtx.currentTime;
+  g.gain.setValueAtTime(0.0001, t0);
+  g.gain.exponentialRampToValueAtTime(0.15, t0 + 0.015);
+  g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.18);
+  o.connect(g).connect(audioCtx.destination);
+  o.start(t0); o.stop(t0 + 0.2);
+}
+function comboReaction(n) {
+  popSound(n);
+  const t = document.getElementById('tiger');
+  const rect = t.getBoundingClientRect();
+  const cx = rect.left + rect.width / 2, cy = rect.top + rect.height / 3;
+  let anim = 'tap-squash', msg, burst = null, dur = 2500;
+  if (buddyState() === 'sleepy') {
+    msg = pick(['むにゃ…💤', 'こら〜… ねむいんだよ〜💤', 'おきちゃう でしょ〜！もう〜！']);
+  } else if (n >= 15) {
+    anim = 'tap-flip';
+    msg = fillMsg(pick([
+      'れんだマスター！！まいりました〜！🏆 ふぅ… ちょっと ひとやすみ させてね🍵',
+      '{name}、げんき まんたん！{cry} いっぱい あそんだから ひとやすみだ〜🍵'
+    ]));
+    burst = ['🌈','⭐','🎉','❤️','✨'];
+    dur = 6000;
+  } else if (n >= 10) {
+    anim = 'tap-jump';
+    msg = fillMsg(pick(['うひゃひゃひゃ！もう ゆるして〜！', 'こちょこちょ こうげきだ〜！{cry}']));
+    burst = ['🎉','✨'];
+    dur = 3000;
+  } else if (n >= 5) {
+    anim = 'tap-spin';
+    msg = pick(['めが まわる〜〜！', 'ぐるぐるぐる〜！', 'うわわわわ！']);
+    burst = ['💫','⭐'];
+  } else {
+    msg = fillMsg(pick(['わわっ！くすぐったいよ〜！', 'ひゃっ！{cry}', 'きゃはは！', 'もっかい やる？']));
+  }
+  t.classList.remove('tap-squash', 'tap-spin', 'tap-jump', 'tap-flip', 'talking');
+  void t.offsetWidth; // アニメーションをリスタート
+  t.classList.add(anim);
+  setTimeout(() => t.classList.remove(anim), 850);
+  if (burst) burstStars(cx, cy, burst);
+  comboSay(msg, dur);
+}
+
+// 連打のしすぎ防止：フィナーレ（15回）まで行ったら3分間の「ひとやすみ」に入る
+let comboRestUntil = 0, restNotified = false;
+
+// キャラをタップ → （連打中）コンボ > おてがみ > （眠いとき）おやすみのうながし > つぎの予定 > のこりのやること > おてがみ再読 > 応援
+function tigerTap() {
+  tapCount++;
+  clearTimeout(tapTimer);
+  tapTimer = setTimeout(() => { tapCount = 0; }, 1400); // 1.4秒あくとコンボ終了
+  if (tapCount >= 2) {
+    if (Date.now() < comboRestUntil) {
+      // ひとやすみ中：最初の1回だけ伝えて、あとは反応しない（反応しないのが一番の抑止）
+      if (!restNotified) {
+        restNotified = true;
+        comboSay(fillMsg('{name}は ひとやすみちゅう…🍵 また あとで あそぼうね'), 4000);
+      }
+      return;
+    }
+    comboReaction(tapCount);
+    if (tapCount >= 15) {
+      comboRestUntil = Date.now() + 3 * 60 * 1000; // フィナーレを見せたら3分休憩
+      restNotified = false;
+      tapCount = 0;
+    }
+    return;
+  }
+  if (deliverDueMail()) return;
+  if (buddyState() === 'sleepy') {
+    tigerSay(fillMsg(pick(SLEEPY_MSGS)), 12000);
+    return;
+  }
+  const now = new Date();
+  const hm = now.getHours() * 60 + now.getMinutes();
+  const next = eventsFor(now).find(ev => {
+    const [h, m] = ev.time.split(':').map(Number);
+    return h * 60 + m > hm;
+  });
+  if (next) {
+    tigerSay('つぎは ' + next.time + 'から「' + next.title + '」だよ！' + next.emoji);
+    return;
+  }
+  const done = doneToday();
+  const p = now.getHours() < 12 ? 'morning' : 'evening';
+  const remain = S.routines.filter(r => r.period === p && !done.includes(r.id)).length;
+  if (remain > 0) {
+    tigerSay((p === 'morning' ? 'あさの' : 'よるの') + ' やることが あと ' + remain + 'こ あるよ！できるかな？');
+    return;
+  }
+  const hwRemain = S.homework.filter(h => !hwDoneToday().includes(h.id)).length;
+  if (hwRemain > 0) {
+    tigerSay('📚 しゅくだいが あと ' + hwRemain + 'こ あるよ！おわったら ❤️が もらえるよ！');
+    return;
+  }
+  const chRemain = S.chores.filter(c => !choreDoneToday().includes(c.id)).length;
+  if (chRemain > 0) {
+    tigerSay('🧺 おてつだいが あと ' + chRemain + 'こ あるよ！おわったら 💎が もらえるよ！');
+    return;
+  }
+  const todaysMail = [...S.mails].reverse().find(m => m.delivered && m.date === todayStr());
+  if (todaysMail) {
+    tigerSay('💌 きょうの おてがみだよ！「' + todaysMail.text + '」！');
+    return;
+  }
+  tigerSay(fillMsg(pick(TIGER_CHEER)));
+}
+document.getElementById('tiger').addEventListener('click', tigerTap);
+
+// やさしいチャイム音（端末を一度タップすると鳴るようになります）
+let audioCtx = null;
+document.addEventListener('pointerdown', () => {
+  if (!audioCtx) {
+    try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {}
+  }
+  if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+});
+function chime() {
+  if (!audioCtx || audioCtx.state !== 'running') return;
+  [[784, 0], [1047, 0.18]].forEach(([f, t]) => {
+    const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+    o.type = 'sine'; o.frequency.value = f;
+    const t0 = audioCtx.currentTime + t;
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(0.16, t0 + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.5);
+    o.connect(g).connect(audioCtx.destination);
+    o.start(t0); o.stop(t0 + 0.55);
+  });
+}
+
+/* ---------- オーバーレイ ---------- */
+function showPraise(emoji, title, msg) {
+  document.getElementById('praiseEmoji').textContent = emoji;
+  document.getElementById('praiseTitle').textContent = title;
+  document.getElementById('praiseMsg').textContent = msg;
+  document.getElementById('praiseOverlay').classList.add('show');
+}
+function closeOverlay(id) {
+  document.getElementById(id).classList.remove('show');
+  if (id === 'parentModal') deliverDueMail(); // 「すぐ」のおてがみを閉じた直後にとどける
+}
+
+/* ---------- おやすみモード ---------- */
+function hmOf(t) { const [h, m] = t.split(':').map(Number); return h * 60 + m; }
+// キャラクターの状態: awake（おきてる）/ sleepy（ねるじかんを過ぎて眠い）/ sleeping（よなか〜おきるじかん前で熟睡）
+function buddyState() {
+  if (!S.sleep || !S.sleep.on) return 'awake';
+  const now = new Date();
+  const hm = now.getHours() * 60 + now.getMinutes();
+  const s = hmOf(S.sleep.start), e = hmOf(S.sleep.end);
+  if (s > e) { // 例: ねる20:00 〜 おきる06:30（夜またぎ）
+    if (hm >= s) return 'sleepy';   // ねるじかんを過ぎた夜 → 眠い
+    if (hm < e) return 'sleeping';  // 深夜0時〜おきるじかん前 → 寝てる
+    return 'awake';
+  }
+  return (hm >= s && hm < e) ? 'sleeping' : 'awake'; // 同日内に収まる設定（お昼寝など）
+}
+function renderNight() {
+  const st = buddyState();
+  // 眠い状態：メイン画面のキャラが目を半分とじて💤
+  document.getElementById('tiger').classList.toggle('sleepy', st === 'sleepy');
+  document.getElementById('buddyZzz').style.display = st === 'sleepy' ? 'block' : 'none';
+  // 寝てる状態：おやすみ画面（全画面）
+  const act = st === 'sleeping';
+  const ov = document.getElementById('nightOverlay');
+  const was = ov.classList.contains('show');
+  ov.classList.toggle('show', act);
+  if (act && !was) {
+    document.getElementById('nightBuddy').innerHTML = BUDDY().svg;
+    let stars = '';
+    for (let i = 0; i < 26; i++) {
+      stars += '<span class="night-star" style="left:' + (Math.random() * 100).toFixed(1) + '%;' +
+        'top:' + (Math.random() * 65).toFixed(1) + '%;' +
+        'font-size:' + Math.round(7 + Math.random() * 11) + 'px;' +
+        'animation-delay:' + (Math.random() * 3).toFixed(2) + 's">✦</span>';
+    }
+    document.getElementById('nightStars').innerHTML = stars;
+  }
+}
+// ねるじかんの10分前に予告
+function checkSleepWarning() {
+  if (!S.sleep || !S.sleep.on) return;
+  const now = new Date();
+  const hm = now.getHours() * 60 + now.getMinutes();
+  const s = hmOf(S.sleep.start);
+  const today = todayStr();
+  if (!S.notified) S.notified = {};
+  if (!S.notified[today]) S.notified[today] = {};
+  const flags = S.notified[today]['_sleep'] || (S.notified[today]['_sleep'] = []);
+  if (!flags.includes('pre') && hm >= s - 10 && hm < s) {
+    flags.push('pre');
+    save();
+    tigerSay(fillMsg('もうすぐ ねるじかんだよ！はみがきは すんだかな？{cry}'), 60000);
+  }
+}
+
+/* ---------- 親モード ---------- */
+let pressTimer = null;
+function attachParentLongPress(el) {
+  el.addEventListener('pointerdown', () => { pressTimer = setTimeout(openParent, 1200); });
+  ['pointerup','pointerleave','pointercancel'].forEach(evt => el.addEventListener(evt, () => clearTimeout(pressTimer)));
+}
+attachParentLongPress(document.getElementById('gearBtn'));
+attachParentLongPress(document.getElementById('nightGear'));
+
+function openParent() {
+  renderParentAll();
+  document.getElementById('parentModal').classList.add('show');
+}
+document.querySelectorAll('.ptab').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.ptab').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.psection').forEach(s => s.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById(btn.dataset.ps).classList.add('active');
+  });
+});
+
+function buildEmojiRow(rowId, emojis, defaultSel) {
+  const row = document.getElementById(rowId);
+  row.innerHTML = emojis.map((e,i) =>
+    '<button type="button" class="emoji-opt' + (i===0 && defaultSel ? ' sel' : '') + '" data-e="' + e + '">' + e + '</button>'
+  ).join('');
+  row.querySelectorAll('.emoji-opt').forEach(b => {
+    b.addEventListener('click', () => {
+      row.querySelectorAll('.emoji-opt').forEach(x => x.classList.remove('sel'));
+      b.classList.add('sel');
+    });
+  });
+}
+function selectedEmoji(rowId, fallback) {
+  const sel = document.querySelector('#' + rowId + ' .emoji-opt.sel');
+  return sel ? sel.dataset.e : fallback;
+}
+
+function renderParentAll() {
+  document.getElementById('eventAdminList').innerHTML = S.events.map(ev => {
+    const when = ev.repeat === 'weekly'
+      ? 'まいしゅう ' + (ev.weekdays || [ev.weekday]).map(w => DOW_JA[w]).join('・') + 'ようび'
+      : ev.date;
+    return '<div class="plist-item"><span>' + esc(ev.emoji) + '</span>' +
+      '<span class="grow">' + esc(ev.title) + ' <span class="meta">' + when + ' ' + esc(ev.time) + '</span></span>' +
+      '<button class="del-btn" onclick="delEvent(\'' + ev.id + '\')">けす</button></div>';
+  }).join('') || '<p class="hint">よていは まだありません</p>';
+  document.getElementById('routineAdminList').innerHTML = S.routines.map(r =>
+    '<div class="plist-item"><span>' + esc(r.emoji) + '</span>' +
+    '<span class="grow">' + esc(r.title) + ' <span class="meta">' + (r.period === 'morning' ? 'あさ' : 'よる') + '</span></span>' +
+    '<button class="del-btn" onclick="delRoutine(\'' + r.id + '\')">けす</button></div>'
+  ).join('') || '<p class="hint">やることは まだありません</p>';
+  document.getElementById('hwAdminList').innerHTML = S.homework.map(h =>
+    '<div class="plist-item"><span>' + esc(h.emoji) + '</span>' +
+    '<span class="grow">' + esc(h.title) + '</span>' +
+    '<button class="del-btn" onclick="delHomework(\'' + h.id + '\')">けす</button></div>'
+  ).join('') || '<p class="hint">しゅくだいは まだありません</p>';
+  document.getElementById('hwGoal').value = S.hwReward.goal;
+  document.getElementById('hwText').value = S.hwReward.text;
+  document.getElementById('adminGemCount').textContent = S.gems;
+  document.getElementById('choreAdminList').innerHTML = S.chores.map(c =>
+    '<div class="plist-item"><span>' + esc(c.emoji) + '</span>' +
+    '<span class="grow">' + esc(c.title) + '</span>' +
+    '<button class="del-btn" onclick="delChore(\'' + c.id + '\')">けす</button></div>'
+  ).join('') || '<p class="hint">おてつだいは まだありません</p>';
+  document.getElementById('chGoal').value = S.choreReward.goal;
+  document.getElementById('chText').value = S.choreReward.text;
+  document.getElementById('adminDiaCount').textContent = S.diamonds;
+  document.getElementById('mailAdminList').innerHTML = S.mails.map(m =>
+    '<div class="plist-item"><span>💌</span>' +
+    '<span class="grow">' + esc(m.text) + ' <span class="meta">' + m.date + ' ' + (m.time || 'すぐ') + (m.delivered ? ' ✓とどけた' : '') + '</span></span>' +
+    '<button class="del-btn" onclick="delMail(\'' + m.id + '\')">けす</button></div>'
+  ).join('') || '<p class="hint">おてがみは まだありません</p>';
+  document.getElementById('mlDate').value = todayStr();
+  document.getElementById('rwGoal').value = S.reward.goal;
+  document.getElementById('rwText').value = S.reward.text;
+  document.getElementById('adminStarCount').textContent = S.stars;
+  document.getElementById('stName').value = S.childName;
+  document.getElementById('stCity').value = S.city;
+  document.getElementById('stWeather').value = S.weather;
+  document.getElementById('stMessage').value = S.message;
+  document.getElementById('stSleepOn').checked = S.sleep.on;
+  document.getElementById('stSleepStart').value = S.sleep.start;
+  document.getElementById('stSleepEnd').value = S.sleep.end;
+  document.getElementById('evDate').value = todayStr();
+}
+
+function addEvent() {
+  const title = document.getElementById('evTitle').value.trim();
+  const time = document.getElementById('evTime').value || '10:00';
+  if (!title) { alert('なまえを入れてください'); return; }
+  const emoji = selectedEmoji('evEmojiRow', '📌');
+  const weekly = document.querySelector('input[name="evRepeat"]:checked').value === 'weekly';
+  let ev;
+  if (weekly) {
+    const days = [...document.querySelectorAll('.ev-dow:checked')].map(c => parseInt(c.value));
+    if (days.length === 0) { alert('くりかえす曜日を選んでください'); return; }
+    ev = { id: uid(), title, emoji, time, repeat: 'weekly', weekdays: days };
+  } else {
+    const date = document.getElementById('evDate').value;
+    if (!date) { alert('日付を入れてください'); return; }
+    ev = { id: uid(), title, emoji, time, repeat: 'once', date };
+  }
+  S.events.push(ev);
+  save();
+  document.getElementById('evTitle').value = '';
+  document.querySelectorAll('.ev-dow').forEach(c => c.checked = false);
+  renderParentAll(); renderToday(); renderWeek();
+}
+// 「この日だけ／まいしゅう」の切り替えでフォームの表示を変える
+document.querySelectorAll('input[name="evRepeat"]').forEach(r => {
+  r.addEventListener('change', () => {
+    const weekly = document.querySelector('input[name="evRepeat"]:checked').value === 'weekly';
+    document.getElementById('evOnceRow').style.display = weekly ? 'none' : 'flex';
+    document.getElementById('evWeeklyRow').style.display = weekly ? 'flex' : 'none';
+  });
+});
+function delEvent(id) {
+  S.events = S.events.filter(e => e.id !== id);
+  save(); renderParentAll(); renderToday(); renderWeek();
+}
+function addRoutine() {
+  const title = document.getElementById('rtTitle').value.trim();
+  if (!title) { alert('なまえを入れてください'); return; }
+  S.routines.push({
+    id: uid(), title,
+    emoji: selectedEmoji('rtEmojiRow', '✅'),
+    period: document.getElementById('rtPeriod').value
+  });
+  save();
+  document.getElementById('rtTitle').value = '';
+  renderParentAll(); renderRoutines();
+}
+function addHomework() {
+  const title = document.getElementById('hwTitle').value.trim();
+  if (!title) { alert('なまえを入れてください'); return; }
+  S.homework.push({ id: uid(), title, emoji: selectedEmoji('hwEmojiRow', '📚') });
+  save();
+  document.getElementById('hwTitle').value = '';
+  renderParentAll(); renderHomework();
+}
+function delHomework(id) {
+  S.homework = S.homework.filter(h => h.id !== id);
+  save(); renderParentAll(); renderHomework(); renderGems();
+}
+function saveHwReward() {
+  S.hwReward.goal = Math.max(1, parseInt(document.getElementById('hwGoal').value) || 10);
+  S.hwReward.text = document.getElementById('hwText').value.trim() || 'とくべつな ごほうび';
+  S.hwReward.emoji = selectedEmoji('hwRwEmojiRow', '🎁');
+  save(); renderGems(); renderParentAll();
+}
+function adjustGems(n) {
+  S.gems = Math.max(0, S.gems + n);
+  save(); renderGems(); renderParentAll();
+}
+function redeemHwReward() {
+  if (S.gems < S.hwReward.goal) { alert('まだ❤️が足りません（' + S.gems + '/' + S.hwReward.goal + '）'); return; }
+  S.gems -= S.hwReward.goal;
+  save(); renderGems(); renderParentAll();
+  closeOverlay('parentModal');
+  showPraise(S.hwReward.emoji, 'とくべつごほうび こうかん！', '「' + S.hwReward.text + '」を たのしんでね！');
+}
+function resetGems() {
+  if (confirm('❤️を0にリセットしますか？')) { S.gems = 0; save(); renderGems(); renderParentAll(); }
+}
+function addChore() {
+  const title = document.getElementById('chTitle').value.trim();
+  if (!title) { alert('なまえを入れてください'); return; }
+  S.chores.push({ id: uid(), title, emoji: selectedEmoji('chEmojiRow', '🧺') });
+  save();
+  document.getElementById('chTitle').value = '';
+  renderParentAll(); renderChores();
+}
+function delChore(id) {
+  S.chores = S.chores.filter(c => c.id !== id);
+  save(); renderParentAll(); renderChores(); renderDias();
+}
+function saveChoreReward() {
+  S.choreReward.goal = Math.max(1, parseInt(document.getElementById('chGoal').value) || 10);
+  S.choreReward.text = document.getElementById('chText').value.trim() || 'ごほうび';
+  S.choreReward.emoji = selectedEmoji('chRwEmojiRow', '🎁');
+  save(); renderDias(); renderParentAll();
+}
+function adjustDias(n) {
+  S.diamonds = Math.max(0, S.diamonds + n);
+  save(); renderDias(); renderParentAll();
+}
+function redeemChoreReward() {
+  if (S.diamonds < S.choreReward.goal) { alert('まだ💎が足りません（' + S.diamonds + '/' + S.choreReward.goal + '）'); return; }
+  S.diamonds -= S.choreReward.goal;
+  save(); renderDias(); renderParentAll();
+  closeOverlay('parentModal');
+  showPraise(S.choreReward.emoji, 'ごほうび こうかん！', '「' + S.choreReward.text + '」を たのしんでね！');
+}
+function resetDias() {
+  if (confirm('💎を0にリセットしますか？')) { S.diamonds = 0; save(); renderDias(); renderParentAll(); }
+}
+function addMail() {
+  const text = document.getElementById('mlText').value.trim();
+  if (!text) { alert('メッセージを入れてください'); return; }
+  const date = document.getElementById('mlDate').value || todayStr();
+  const time = document.getElementById('mlTime').value; // 空なら「すぐ」
+  S.mails.push({ id: uid(), text, date, time, delivered: false });
+  save();
+  document.getElementById('mlText').value = '';
+  document.getElementById('mlTime').value = '';
+  renderParentAll();
+}
+function delMail(id) {
+  S.mails = S.mails.filter(m => m.id !== id);
+  save(); renderParentAll();
+}
+function delRoutine(id) {
+  S.routines = S.routines.filter(r => r.id !== id);
+  save(); renderParentAll(); renderRoutines();
+}
+function saveReward() {
+  S.reward.goal = Math.max(1, parseInt(document.getElementById('rwGoal').value) || 20);
+  S.reward.text = document.getElementById('rwText').value.trim() || 'ごほうび';
+  S.reward.emoji = selectedEmoji('rwEmojiRow', '🎁');
+  save(); renderStars(); renderParentAll();
+}
+function adjustStars(n) {
+  S.stars = Math.max(0, S.stars + n);
+  save(); renderStars(); renderParentAll();
+}
+function redeemReward() {
+  if (S.stars < S.reward.goal) { alert('まだスターが足りません（' + S.stars + '/' + S.reward.goal + '）'); return; }
+  S.stars -= S.reward.goal;
+  save(); renderStars(); renderParentAll();
+  closeOverlay('parentModal');
+  showPraise('🎁', 'ごほうび こうかん！', '「' + S.reward.text + '」を たのしんでね！');
+}
+function resetStars() {
+  if (confirm('スターを0にリセットしますか？')) { S.stars = 0; save(); renderStars(); renderParentAll(); }
+}
+function saveSettings() {
+  S.childName = document.getElementById('stName').value.trim();
+  S.city = document.getElementById('stCity').value;
+  S.weather = document.getElementById('stWeather').value;
+  S.message = document.getElementById('stMessage').value.trim() || 'きょうも げんきに すごそうね！';
+  S.sleep = {
+    on: document.getElementById('stSleepOn').checked,
+    start: document.getElementById('stSleepStart').value || '20:00',
+    end: document.getElementById('stSleepEnd').value || '06:00'
+  };
+  save(); renderHeader(); renderParentAll();
+  fetchWeather(); // 地域変更を即反映（手動のときは何もしない）
+  renderNight(); // おやすみモード設定を即反映
+}
+
+/* ---------- 初期化 ---------- */
+function renderAll() {
+  renderHeader(); renderToday(); renderWeek(); renderRoutines(); renderStars();
+  renderHomework(); renderGems();
+  renderChores(); renderDias();
+  renderBuddy(); renderSeason(); renderStamps(); renderNight();
+}
+buildEmojiRow('evEmojiRow', EVENT_EMOJIS, true);
+buildEmojiRow('rtEmojiRow', ROUTINE_EMOJIS, true);
+buildEmojiRow('rwEmojiRow', REWARD_EMOJIS, true);
+buildEmojiRow('hwEmojiRow', HW_EMOJIS, true);
+buildEmojiRow('hwRwEmojiRow', HW_REWARD_EMOJIS, true);
+buildEmojiRow('chEmojiRow', CHORE_EMOJIS, true);
+buildEmojiRow('chRwEmojiRow', CHORE_REWARD_EMOJIS, true);
+renderAll();
+save();
+tick();
+setInterval(tick, 1000);
+fetchWeather();
+setInterval(fetchWeather, 60 * 60 * 1000); // 1時間ごとに更新
+
+// iPadを置きっぱなしで使うとき画面が消えないようにする（対応ブラウザのみ・失敗しても無視）
+let wakeLock = null;
+async function requestWakeLock() {
+  try {
+    if ('wakeLock' in navigator) wakeLock = await navigator.wakeLock.request('screen');
+  } catch (e) { /* 省電力設定などで拒否されたら何もしない */ }
+}
+document.addEventListener('pointerdown', requestWakeLock, { once: true });
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') requestWakeLock();
+});
+
+// その日はじめて開いたとき、きょうのおともだちが あいさつ
+if (S.lastGreetDate !== todayStr()) {
+  setTimeout(() => {
+    tigerSay(fillMsg('こんにちは！きょうは {label}の {name}が いっしょだよ！よていの じかんに なったら おしらせするね！{cry}'.replace('{label}', BUDDY().label)), 14000);
+    S.lastGreetDate = todayStr();
+    save();
+  }, 1200);
+}
+</script>
+</body>
+</html>
