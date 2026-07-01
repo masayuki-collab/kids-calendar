@@ -117,11 +117,19 @@
     border-radius: var(--r-lg);
     box-shadow: var(--shadow-sm);
     border: 1px solid var(--line);
-    padding: 14px 26px 12px;
+    padding: 10px 22px;
     display: flex;
-    flex-direction: column;
-    justify-content: center;
+    flex-direction: row;
+    align-items: center;
+    gap: 16px;
   }
+  #analogClock {
+    width: clamp(88px, 9.5vw, 118px);
+    height: auto;
+    flex-shrink: 0;
+  }
+  #analogClock text { font-family: "Zen Maru Gothic", "Hiragino Maru Gothic ProN", sans-serif; }
+  .clock-digital { display: flex; flex-direction: column; justify-content: center; }
   #clock {
     font-size: clamp(42px, 5.4vw, 60px);
     font-weight: 900;
@@ -808,8 +816,19 @@
 
 <header>
   <div class="clock-card">
-    <div id="clock">--:--</div>
-    <div id="dateText"></div>
+    <!-- アナログ時計（とけいの読み方れんしゅう用。みじかい針=じ、ながい針=ふん） -->
+    <svg id="analogClock" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="50" cy="50" r="48" fill="#fffdf9" stroke="#efe9e1" stroke-width="2.5"/>
+      <g id="clockFace"></g>
+      <line id="hourHand" x1="50" y1="54" x2="50" y2="28" stroke="#f2766b" stroke-width="5.5" stroke-linecap="round"/>
+      <line id="minHand" x1="50" y1="56" x2="50" y2="16" stroke="#5e9ec9" stroke-width="3.6" stroke-linecap="round"/>
+      <line id="secHand" x1="50" y1="56" x2="50" y2="13" stroke="#f0b32e" stroke-width="1.4" stroke-linecap="round"/>
+      <circle cx="50" cy="50" r="3.4" fill="#3f3a36"/>
+    </svg>
+    <div class="clock-digital">
+      <div id="clock">--:--</div>
+      <div id="dateText"></div>
+    </div>
   </div>
   <div class="hello-card">
     <div id="weatherBox">☀️</div>
@@ -1249,6 +1268,24 @@ function fetchWeather() {
 }
 
 /* ---------- 時計・日付 ---------- */
+// アナログ時計の文字盤（目盛り60本＋数字1〜12）を一度だけ生成
+function buildClockFace() {
+  let s = '';
+  for (let i = 0; i < 60; i++) {
+    const a = i * 6 * Math.PI / 180;
+    const big = i % 5 === 0;
+    const r1 = big ? 41.5 : 44;
+    s += '<line x1="' + (50 + r1 * Math.sin(a)).toFixed(2) + '" y1="' + (50 - r1 * Math.cos(a)).toFixed(2) +
+      '" x2="' + (50 + 46 * Math.sin(a)).toFixed(2) + '" y2="' + (50 - 46 * Math.cos(a)).toFixed(2) +
+      '" stroke="' + (big ? '#c2bab1' : '#eae2d8') + '" stroke-width="' + (big ? 1.8 : 1) + '" stroke-linecap="round"/>';
+  }
+  for (let n = 1; n <= 12; n++) {
+    const a = n * 30 * Math.PI / 180;
+    s += '<text x="' + (50 + 33.5 * Math.sin(a)).toFixed(2) + '" y="' + (50 - 33.5 * Math.cos(a) + 3.4).toFixed(2) +
+      '" text-anchor="middle" font-size="10" font-weight="700" fill="#5a5049">' + n + '</text>';
+  }
+  document.getElementById('clockFace').innerHTML = s;
+}
 let lastDate = todayStr();
 let lastMinute = -1;
 function tick() {
@@ -1256,6 +1293,11 @@ function tick() {
   document.getElementById('clock').innerHTML =
     now.getHours() + ':' + String(now.getMinutes()).padStart(2,'0') +
     '<small>' + String(now.getSeconds()).padStart(2,'0') + '</small>';
+  // アナログ時計の針を動かす
+  const hh = now.getHours() % 12, mm = now.getMinutes(), ss = now.getSeconds();
+  document.getElementById('hourHand').setAttribute('transform', 'rotate(' + (hh * 30 + mm * 0.5) + ' 50 50)');
+  document.getElementById('minHand').setAttribute('transform', 'rotate(' + (mm * 6 + ss * 0.1) + ' 50 50)');
+  document.getElementById('secHand').setAttribute('transform', 'rotate(' + (ss * 6) + ' 50 50)');
   if (todayStr() !== lastDate) { lastDate = todayStr(); renderAll(); }
   const curMin = now.getHours() * 60 + now.getMinutes();
   if (curMin !== lastMinute) {
@@ -2359,6 +2401,7 @@ buildEmojiRow('hwEmojiRow', HW_EMOJIS, true);
 buildEmojiRow('hwRwEmojiRow', HW_REWARD_EMOJIS, true);
 buildEmojiRow('chEmojiRow', CHORE_EMOJIS, true);
 buildEmojiRow('chRwEmojiRow', CHORE_REWARD_EMOJIS, true);
+buildClockFace();
 renderAll();
 save();
 tick();
