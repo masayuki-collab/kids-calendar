@@ -272,6 +272,12 @@
     color: var(--accent, var(--sky));
     padding-right: 16px;
     border-right: 2px solid rgba(63,58,54,.08);
+    text-align: center;
+  }
+  .event-time-end {
+    display: block;
+    font-size: .78em;
+    opacity: .85;
   }
   .event-emoji {
     font-size: clamp(26px, 3.2vw, 34px);
@@ -819,6 +825,7 @@
     <!-- アナログ時計（とけいの読み方れんしゅう用。みじかい針=じ、ながい針=ふん） -->
     <svg id="analogClock" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
       <circle cx="50" cy="50" r="48" fill="#fffdf9" stroke="#efe9e1" stroke-width="2.5"/>
+      <g id="clockArcs"></g><!-- きょうの予定の時間帯を色の帯で表示 -->
       <g id="clockFace"></g>
       <line id="hourHand" x1="50" y1="54" x2="50" y2="28" stroke="#f2766b" stroke-width="5.5" stroke-linecap="round"/>
       <line id="minHand" x1="50" y1="56" x2="50" y2="16" stroke="#5e9ec9" stroke-width="3.6" stroke-linecap="round"/>
@@ -992,6 +999,9 @@
         <div class="inline">
           <span class="hint">じかん</span>
           <input type="time" id="evTime" value="10:00">
+          <span class="hint">〜</span>
+          <input type="time" id="evTimeEnd">
+          <span class="hint">おわりは空でもOK。入れるとアナログ時計に色の帯が出ます</span>
         </div>
         <button class="btn small" onclick="addEvent()">＋ ついか</button>
       </div>
@@ -1188,7 +1198,7 @@ function defaultState() {
     stars: 0,
     reward: { goal: 20, text: 'すきな おやつを えらべる', emoji: '🍦' },
     events: [
-      { id: uid(), title: 'すいえい', emoji: '🏊', time: '15:30', repeat: 'weekly', weekdays: [t.getDay()] },
+      { id: uid(), title: 'すいえい', emoji: '🏊', time: '15:30', endTime: '16:30', repeat: 'weekly', weekdays: [t.getDay()] },
       { id: uid(), title: 'こうえんで あそぶ', emoji: '🛝', time: '10:00', repeat: 'once', date: fmtDate(tomorrow) }
     ],
     routines: [
@@ -1306,6 +1316,7 @@ function tick() {
     checkSleepWarning();
     renderNight();
     deliverDueMail();
+    renderClockArcs(); // 終わった予定の帯を消す
   }
   if (document.getElementById('nightOverlay').classList.contains('show')) {
     document.getElementById('nightClock').textContent =
@@ -1346,12 +1357,45 @@ function renderToday() {
   }
   list.innerHTML = evs.map((ev,i) => {
     const [tint, accent] = TINTS[i % TINTS.length];
+    const timeHtml = esc(ev.time) + (ev.endTime ? '<span class="event-time-end">〜' + esc(ev.endTime) + '</span>' : '');
     return '<div class="event-card" style="--tint:' + tint + ';--accent:' + accent + ';animation-delay:' + (i*0.07) + 's">' +
-      '<span class="event-time">' + esc(ev.time) + '</span>' +
+      '<span class="event-time">' + timeHtml + '</span>' +
       '<span class="event-emoji">' + esc(ev.emoji) + '</span>' +
       '<span class="event-title">' + esc(ev.title) + '</span>' +
     '</div>';
   }).join('');
+  renderClockArcs(); // アナログ時計の色の帯も更新
+}
+
+/* ---------- アナログ時計の予定バンド ---------- */
+function arcPath(startDeg, endDeg, r) {
+  const a1 = (startDeg - 90) * Math.PI / 180;
+  const a2 = (endDeg - 90) * Math.PI / 180;
+  const large = (endDeg - startDeg) > 180 ? 1 : 0;
+  return 'M ' + (50 + r * Math.cos(a1)).toFixed(2) + ' ' + (50 + r * Math.sin(a1)).toFixed(2) +
+    ' A ' + r + ' ' + r + ' 0 ' + large + ' 1 ' +
+    (50 + r * Math.cos(a2)).toFixed(2) + ' ' + (50 + r * Math.sin(a2)).toFixed(2);
+}
+// きょうの「〜まで」つき予定を、予定カードと同じ色の帯で文字盤の縁に描く
+function renderClockArcs() {
+  const g = document.getElementById('clockArcs');
+  const now = new Date();
+  const nowMin = now.getHours() * 60 + now.getMinutes();
+  let s = '';
+  eventsFor(now).forEach((ev, i) => {
+    if (!ev.endTime) return;
+    const st = hmOf(ev.time), en = hmOf(ev.endTime);
+    if (en <= st) return;          // 不正な範囲は無視
+    if (en <= nowMin) return;      // もう終わった予定は消す
+    if (st >= nowMin + 720) return; // 12時間以上先は文字盤で表せないので出さない
+    const a1 = (st % 720) / 720 * 360;
+    let a2 = (en % 720) / 720 * 360;
+    if (a2 <= a1) a2 += 360; // 12時またぎ
+    const accent = TINTS[i % TINTS.length][1];
+    s += '<path d="' + arcPath(a1, a2, 44) + '" fill="none" stroke="' + accent +
+      '" stroke-width="5.5" stroke-linecap="round" opacity=".55"/>';
+  });
+  g.innerHTML = s;
 }
 function renderWeek() {
   const grid = document.getElementById('weekGrid');
@@ -2180,7 +2224,7 @@ function renderParentAll() {
       ? 'まいしゅう ' + (ev.weekdays || [ev.weekday]).map(w => DOW_JA[w]).join('・') + 'ようび'
       : ev.date;
     return '<div class="plist-item"><span>' + esc(ev.emoji) + '</span>' +
-      '<span class="grow">' + esc(ev.title) + ' <span class="meta">' + when + ' ' + esc(ev.time) + '</span></span>' +
+      '<span class="grow">' + esc(ev.title) + ' <span class="meta">' + when + ' ' + esc(ev.time) + (ev.endTime ? '〜' + esc(ev.endTime) : '') + '</span></span>' +
       '<button class="del-btn" onclick="delEvent(\'' + ev.id + '\')">けす</button></div>';
   }).join('') || '<p class="hint">よていは まだありません</p>';
   document.getElementById('routineAdminList').innerHTML = S.routines.map(r =>
@@ -2226,22 +2270,25 @@ function renderParentAll() {
 function addEvent() {
   const title = document.getElementById('evTitle').value.trim();
   const time = document.getElementById('evTime').value || '10:00';
+  const endTime = document.getElementById('evTimeEnd').value; // 空ならおわりなし
   if (!title) { alert('なまえを入れてください'); return; }
+  if (endTime && hmOf(endTime) <= hmOf(time)) { alert('おわりの時間は、はじまりより後にしてください'); return; }
   const emoji = selectedEmoji('evEmojiRow', '📌');
   const weekly = document.querySelector('input[name="evRepeat"]:checked').value === 'weekly';
   let ev;
   if (weekly) {
     const days = [...document.querySelectorAll('.ev-dow:checked')].map(c => parseInt(c.value));
     if (days.length === 0) { alert('くりかえす曜日を選んでください'); return; }
-    ev = { id: uid(), title, emoji, time, repeat: 'weekly', weekdays: days };
+    ev = { id: uid(), title, emoji, time, endTime, repeat: 'weekly', weekdays: days };
   } else {
     const date = document.getElementById('evDate').value;
     if (!date) { alert('日付を入れてください'); return; }
-    ev = { id: uid(), title, emoji, time, repeat: 'once', date };
+    ev = { id: uid(), title, emoji, time, endTime, repeat: 'once', date };
   }
   S.events.push(ev);
   save();
   document.getElementById('evTitle').value = '';
+  document.getElementById('evTimeEnd').value = '';
   document.querySelectorAll('.ev-dow').forEach(c => c.checked = false);
   renderParentAll(); renderToday(); renderWeek();
 }
