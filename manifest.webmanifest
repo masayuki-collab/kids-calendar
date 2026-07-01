@@ -1,12 +1,17 @@
 {
   "name": "こどもカレンダー",
   "short_name": "こどもカレンダー",
+  "description": "こども向けの家族カレンダー。よてい・やること・しゅくだい・おてつだいを、曜日のおともだちがスターやハートで応援します。",
+  "lang": "ja",
   "start_url": "./",
+  "scope": "./",
   "display": "standalone",
+  "orientation": "any",
   "background_color": "#f7f4ee",
   "theme_color": "#f7f4ee",
   "icons": [
     { "src": "icon.png", "sizes": "180x180", "type": "image/png" },
-    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" }
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ]
 }

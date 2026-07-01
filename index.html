@@ -9,6 +9,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="こどもカレンダー">
+<meta name="theme-color" content="#f7f4ee">
 <link rel="apple-touch-icon" href="icon.png">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -2376,6 +2377,13 @@ document.addEventListener('pointerdown', requestWakeLock, { once: true });
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible') requestWakeLock();
 });
+
+// PWA: Service Workerを登録（2回目以降の高速起動＆オフラインでも動く）
+if ('serviceWorker' in navigator && location.protocol === 'https:') {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js').catch(() => { /* 未対応環境では通常のWebページとして動く */ });
+  });
+}
 
 // その日はじめて開いたとき、きょうのおともだちが あいさつ
 if (S.lastGreetDate !== todayStr()) {
