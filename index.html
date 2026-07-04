@@ -183,6 +183,56 @@
     transition: transform .15s;
   }
   #gearBtn:active { transform: scale(0.93); }
+  #moodBtn {
+    border: 1px solid var(--line);
+    background: var(--surface);
+    box-shadow: var(--shadow-sm);
+    font-size: 22px;
+    width: 48px;
+    border-radius: var(--r-lg);
+    cursor: pointer;
+    align-self: stretch;
+    transition: transform .15s;
+  }
+  #moodBtn:active { transform: scale(0.93); }
+
+  /* ============ きもちスケール ============ */
+  .mood-axis { font-size: 13px; font-weight: 900; color: var(--ink-soft); text-align: center; margin: 4px 0; }
+  .mood-row { display: flex; align-items: center; justify-content: center; gap: 5px; }
+  .mood-side { writing-mode: vertical-rl; font-size: 12px; font-weight: 700; color: var(--ink-soft); }
+  #moodMap {
+    position: relative;
+    touch-action: none;
+    width: min(60vw, 290px);
+    height: min(60vw, 290px);
+    border-radius: 22px;
+    border: 4px solid #fff;
+    box-shadow: var(--shadow-md);
+    cursor: pointer;
+    background:
+      radial-gradient(circle at 85% 15%, rgba(246,196,83,.78), transparent 55%),
+      radial-gradient(circle at 15% 15%, rgba(242,118,107,.62), transparent 55%),
+      radial-gradient(circle at 85% 85%, rgba(79,174,155,.55), transparent 55%),
+      radial-gradient(circle at 15% 85%, rgba(94,158,201,.6), transparent 55%),
+      #fffdf5;
+  }
+  .mood-grid { position: absolute; background: rgba(255,255,255,.75); pointer-events: none; }
+  .mood-hint { position: absolute; font-size: 24px; opacity: .8; pointer-events: none; }
+  #moodMarker {
+    position: absolute;
+    font-size: 44px;
+    line-height: 1;
+    transform: translate(-50%, -50%);
+    filter: drop-shadow(0 3px 4px rgba(0,0,0,.25));
+    pointer-events: none;
+  }
+  .mood-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  .mood-table th, .mood-table td {
+    padding: 5px 4px;
+    text-align: center;
+    border-bottom: 1px solid var(--line);
+    font-weight: 700;
+  }
 
   /* ============ レイアウト ============ */
   main {
@@ -844,6 +894,7 @@
       <div id="messageBox"></div>
     </div>
   </div>
+  <button id="moodBtn" title="いまの きもちを おしえてね">😊</button>
   <button id="gearBtn" title="おうちのひとよう：1びょう ながおし">⚙</button>
 </header>
 
@@ -949,6 +1000,33 @@
   <div id="tiger" title="タップしてみてね"></div>
 </div>
 
+<!-- きもちスケール -->
+<div class="overlay" id="moodOverlay">
+  <div class="overlay-card" style="max-width: 440px;">
+    <h3 style="color: var(--ink);">いまの きもちは どこかな？</h3>
+    <p style="margin-bottom: 10px;">ゆびで さわって ぴったりの ばしょに おいてね</p>
+    <div class="mood-axis">⚡ げんき いっぱい</div>
+    <div class="mood-row">
+      <div class="mood-side">😢 かなしい</div>
+      <div id="moodMap">
+        <div class="mood-grid" style="left:50%; top:0; width:3px; height:100%;"></div>
+        <div class="mood-grid" style="top:50%; left:0; height:3px; width:100%;"></div>
+        <span class="mood-hint" style="top:6px; right:8px;">🤩</span>
+        <span class="mood-hint" style="top:6px; left:8px;">😠</span>
+        <span class="mood-hint" style="bottom:6px; right:8px;">😌</span>
+        <span class="mood-hint" style="bottom:6px; left:8px;">😭</span>
+        <div id="moodMarker">😊</div>
+      </div>
+      <div class="mood-side">😊 うれしい</div>
+    </div>
+    <div class="mood-axis">🌙 つかれた・ねむい</div>
+    <div style="margin-top: 16px; display: flex; gap: 10px; justify-content: center;">
+      <button class="btn ghost" onclick="closeOverlay('moodOverlay')">やめる</button>
+      <button class="btn coral" onclick="saveMood()">これで できた！</button>
+    </div>
+  </div>
+</div>
+
 <!-- できたね！オーバーレイ -->
 <div class="overlay" id="praiseOverlay">
   <div class="overlay-card">
@@ -969,6 +1047,7 @@
       <button class="ptab" data-ps="psHomework">しゅくだい</button>
       <button class="ptab" data-ps="psChores">おてつだい</button>
       <button class="ptab" data-ps="psMails">おてがみ</button>
+      <button class="ptab" data-ps="psMoods">きもち</button>
       <button class="ptab" data-ps="psReward">ごほうび</button>
       <button class="ptab" data-ps="psSettings">せってい</button>
     </div>
@@ -1088,6 +1167,28 @@
         <button class="btn small" onclick="addMail()">＋ ついか</button>
       </div>
       <p class="hint" style="margin-top:8px;">とどいたおてがみは、キャラクターをタップすると もういちど聞けます。前日までのおてがみは自動で消えます。</p>
+    </div>
+
+    <!-- きもちの記録（保護者用ダッシュボード） -->
+    <div class="psection" id="psMoods">
+      <div class="pform">
+        <label>きもちの推移（直近30件）</label>
+        <div id="moodChartC"></div>
+        <p class="hint">オレンジ＝きもち（悲しい↔嬉しい）／青＝げんき（疲れた↔元気）</p>
+      </div>
+      <div class="pform" style="margin-top:12px;">
+        <label>きもちマップの分布（全記録・オレンジは直近5件)</label>
+        <div id="moodScatterC" style="display:flex; justify-content:center;"></div>
+      </div>
+      <div class="pform" style="margin-top:12px;">
+        <label>最近の記録</label>
+        <div id="moodHistoryC" style="overflow-x:auto;"></div>
+      </div>
+      <div class="inline" style="margin-top:12px;">
+        <button class="btn small" onclick="exportMoodCsv()">CSVを書き出す</button>
+        <button class="btn small ghost" onclick="clearMoods()">全記録を削除</button>
+      </div>
+      <p class="hint" style="margin-top:8px;">記録はこの端末内にのみ保存されます。家庭用のセルフチェックであり、医学的診断を行うものではありません。</p>
     </div>
 
     <!-- ごほうび管理 -->
@@ -1238,6 +1339,7 @@ if (!S.chores) S.chores = [ // おてつだい（💎がたまる）
 if (S.diamonds === undefined) S.diamonds = 0; // おてつだい専用ポイント
 if (!S.choreReward) S.choreReward = { goal: 10, text: 'すきな ばんごはんを リクエスト', emoji: '🍛' };
 if (!S.choreDone) S.choreDone = {}; // { 'YYYY-MM-DD': [choreId, ...] }
+if (!S.moods) S.moods = []; // きもちの記録 [{d, time, face, label, v, e}]
 function save() { localStorage.setItem(STORE_KEY, JSON.stringify(S)); }
 
 /* ---------- 天気の自動取得（Open-Meteo・APIキー不要） ---------- */
@@ -1317,6 +1419,7 @@ function tick() {
     renderNight();
     deliverDueMail();
     renderClockArcs(); // 終わった予定の帯を消す
+    checkMoodPrompt(); // 夕方に「きもち」の記録を1回だけ誘う
   }
   if (document.getElementById('nightOverlay').classList.contains('show')) {
     document.getElementById('nightClock').textContent =
@@ -2179,6 +2282,152 @@ function checkSleepWarning() {
   }
 }
 
+/* ---------- きもちスケール ---------- */
+const MOOD_MAX = 500; // 保存する最大件数
+let moodV = 0, moodE = 0, moodDragging = false;
+// マップ上の位置（v: 悲しい-1〜嬉しい+1, e: 疲れた-1〜元気+1）から顔を決める
+function faceFor(v, e) {
+  if (v > 0.2)  return e > 0.2 ? { emoji: '😄', label: 'わくわく' }
+               : e < -0.2 ? { emoji: '😌', label: 'ほっこり' }
+               : { emoji: '😊', label: 'にこにこ' };
+  if (v < -0.2) return e > 0.2 ? { emoji: '😠', label: 'ぷんぷん' }
+               : e < -0.2 ? { emoji: '😭', label: 'しくしく' }
+               : { emoji: '😢', label: 'かなしい' };
+  return e < -0.4 ? { emoji: '😴', label: 'つかれた' } : { emoji: '😐', label: 'ふつう' };
+}
+function setMoodMarker(x, y) {
+  const m = document.getElementById('moodMarker');
+  m.style.left = x + 'px';
+  m.style.top = y + 'px';
+  m.textContent = faceFor(moodV, moodE).emoji;
+}
+function moodFromPointer(cx, cy) {
+  const r = document.getElementById('moodMap').getBoundingClientRect();
+  const x = Math.min(Math.max(cx - r.left, 0), r.width);
+  const y = Math.min(Math.max(cy - r.top, 0), r.height);
+  moodV = +(x / r.width * 2 - 1).toFixed(3);
+  moodE = +((1 - y / r.height) * 2 - 1).toFixed(3);
+  setMoodMarker(x, y);
+}
+const moodMap = document.getElementById('moodMap');
+moodMap.addEventListener('pointerdown', e => {
+  moodDragging = true;
+  moodMap.setPointerCapture(e.pointerId);
+  moodFromPointer(e.clientX, e.clientY);
+});
+moodMap.addEventListener('pointermove', e => { if (moodDragging) moodFromPointer(e.clientX, e.clientY); });
+['pointerup', 'pointercancel'].forEach(ev => moodMap.addEventListener(ev, () => { moodDragging = false; }));
+function openMood() {
+  moodV = 0; moodE = 0;
+  document.getElementById('moodOverlay').classList.add('show');
+  requestAnimationFrame(() => {
+    const r = moodMap.getBoundingClientRect();
+    setMoodMarker(r.width / 2, r.height / 2);
+  });
+}
+document.getElementById('moodBtn').addEventListener('click', openMood);
+function saveMood() {
+  const face = faceFor(moodV, moodE);
+  const now = new Date();
+  S.moods.push({
+    d: todayStr(),
+    time: now.getHours() + ':' + String(now.getMinutes()).padStart(2, '0'),
+    face: face.emoji, label: face.label, v: moodV, e: moodE
+  });
+  if (S.moods.length > MOOD_MAX) S.moods = S.moods.slice(-MOOD_MAX);
+  save();
+  closeOverlay('moodOverlay');
+  burstStars(innerWidth / 2, innerHeight / 2, ['💛', '⭐', '✨']);
+  tigerSay(fillMsg('きもちを おしえてくれて ありがとう！{name} うれしいな！') + ' ' + face.emoji, 12000);
+}
+// 夕方（16時以降）にその日の記録がなければ、キャラが1回だけ誘う
+function checkMoodPrompt() {
+  if (new Date().getHours() < 16) return;
+  if (S.moods.some(m => m.d === todayStr())) return;
+  if (buddyState() !== 'awake') return;
+  if (!S.notified) S.notified = {};
+  if (!S.notified[todayStr()]) S.notified[todayStr()] = {};
+  const flags = S.notified[todayStr()]['_mood'] || (S.notified[todayStr()]['_mood'] = []);
+  if (flags.includes('ask')) return;
+  flags.push('ask');
+  save();
+  tigerSay('ねえねえ、きょうの きもちを おしえて！うえの 😊ボタンを おしてみてね！', 30000);
+}
+
+/* ---------- きもちの記録（保護者用ダッシュボード） ---------- */
+function moodFmt(m) { return m.d.slice(5).replace('-', '/') + ' ' + m.time; }
+function renderMoodChart() {
+  const c = document.getElementById('moodChartC');
+  if (S.moods.length < 2) { c.innerHTML = '<p class="hint" style="text-align:center; padding:10px 0;">記録が2件以上たまるとグラフが表示されます</p>'; return; }
+  const data = S.moods.slice(-30);
+  const W = 420, H = 170, PAD = 24;
+  const px = i => PAD + i * (W - 2 * PAD) / (data.length - 1);
+  const py = val => H / 2 - val * (H / 2 - PAD);
+  const line = key => data.map((m, i) => (i === 0 ? 'M' : 'L') + px(i).toFixed(1) + ' ' + py(m[key]).toFixed(1)).join(' ');
+  let svg = '<svg viewBox="0 0 ' + W + ' ' + H + '" style="width:100%;">' +
+    '<line x1="' + PAD + '" y1="' + H / 2 + '" x2="' + (W - PAD) + '" y2="' + H / 2 + '" stroke="#e8e0d6"/>' +
+    '<text x="2" y="' + (PAD + 4) + '" font-size="10" fill="#c2bab1">+1</text>' +
+    '<text x="2" y="' + (H / 2 + 4) + '" font-size="10" fill="#c2bab1">0</text>' +
+    '<text x="2" y="' + (H - PAD + 4) + '" font-size="10" fill="#c2bab1">-1</text>' +
+    '<path d="' + line('v') + '" fill="none" stroke="#f2766b" stroke-width="2.5" stroke-linecap="round"/>' +
+    '<path d="' + line('e') + '" fill="none" stroke="#5e9ec9" stroke-width="2.5" stroke-linecap="round"/>';
+  data.forEach((m, i) => {
+    svg += '<circle cx="' + px(i).toFixed(1) + '" cy="' + py(m.v).toFixed(1) + '" r="3" fill="#f2766b"/>' +
+           '<circle cx="' + px(i).toFixed(1) + '" cy="' + py(m.e).toFixed(1) + '" r="3" fill="#5e9ec9"/>';
+  });
+  svg += '<text x="' + PAD + '" y="' + (H - 3) + '" font-size="9" fill="#c2bab1">' + moodFmt(data[0]) + '</text>' +
+    '<text x="' + (W - PAD) + '" y="' + (H - 3) + '" font-size="9" fill="#c2bab1" text-anchor="end">' + moodFmt(data[data.length - 1]) + '</text></svg>';
+  c.innerHTML = svg;
+}
+function renderMoodScatter() {
+  const c = document.getElementById('moodScatterC');
+  if (!S.moods.length) { c.innerHTML = '<p class="hint" style="padding:10px 0;">まだ記録がありません</p>'; return; }
+  const SZ = 220, PAD = 12;
+  let svg = '<svg viewBox="0 0 ' + SZ + ' ' + SZ + '" style="width:' + SZ + 'px; max-width:100%; background:#fffdf5; border-radius:12px; border:1px solid var(--line);">' +
+    '<line x1="' + SZ / 2 + '" y1="0" x2="' + SZ / 2 + '" y2="' + SZ + '" stroke="#f0ebe3"/>' +
+    '<line x1="0" y1="' + SZ / 2 + '" x2="' + SZ + '" y2="' + SZ / 2 + '" stroke="#f0ebe3"/>' +
+    '<text x="' + (SZ - 4) + '" y="' + (SZ / 2 - 4) + '" font-size="9" fill="#c2bab1" text-anchor="end">嬉しい→</text>' +
+    '<text x="4" y="' + (SZ / 2 - 4) + '" font-size="9" fill="#c2bab1">←悲しい</text>' +
+    '<text x="' + (SZ / 2 + 4) + '" y="12" font-size="9" fill="#c2bab1">↑元気</text>' +
+    '<text x="' + (SZ / 2 + 4) + '" y="' + (SZ - 4) + '" font-size="9" fill="#c2bab1">↓疲れた</text>';
+  S.moods.forEach((m, i) => {
+    const x = PAD + (m.v + 1) / 2 * (SZ - 2 * PAD);
+    const y = PAD + (1 - (m.e + 1) / 2) * (SZ - 2 * PAD);
+    const recent = i >= S.moods.length - 5;
+    svg += '<circle cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="' + (recent ? 6 : 4) +
+      '" fill="' + (recent ? '#f2766b' : '#c9c2d8') + '" opacity="' + (recent ? .9 : .5) + '"/>';
+  });
+  c.innerHTML = svg + '</svg>';
+}
+function renderMoodHistory() {
+  const c = document.getElementById('moodHistoryC');
+  if (!S.moods.length) { c.innerHTML = '<p class="hint" style="padding:10px 0;">まだ記録がありません</p>'; return; }
+  const rows = S.moods.slice(-10).reverse().map(m =>
+    '<tr><td>' + moodFmt(m) + '</td><td style="font-size:1.25rem;">' + m.face + '</td><td>' + m.label +
+    '</td><td>' + m.v.toFixed(2) + '</td><td>' + m.e.toFixed(2) + '</td></tr>'
+  ).join('');
+  c.innerHTML = '<table class="mood-table"><thead><tr><th>日時</th><th>顔</th><th>ラベル</th><th>きもち</th><th>げんき</th></tr></thead><tbody>' +
+    rows + '</tbody></table><p class="hint" style="text-align:center; padding-top:4px;">全' + S.moods.length + '件（表示は最新10件）</p>';
+}
+function exportMoodCsv() {
+  if (!S.moods.length) { alert('記録がありません'); return; }
+  const csv = 'date,time,face,label,valence,energy\n' +
+    S.moods.map(m => m.d + ',' + m.time + ',' + m.face + ',' + m.label + ',' + m.v + ',' + m.e).join('\n');
+  const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'kimochi-log.csv';
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+function clearMoods() {
+  if (confirm('きもちの記録をすべて削除します。よろしいですか？')) {
+    S.moods = [];
+    save();
+    renderMoodChart(); renderMoodScatter(); renderMoodHistory();
+  }
+}
+
 /* ---------- 親モード ---------- */
 let pressTimer = null;
 function attachParentLongPress(el) {
@@ -2264,6 +2513,7 @@ function renderParentAll() {
   document.getElementById('stSleepOn').checked = S.sleep.on;
   document.getElementById('stSleepStart').value = S.sleep.start;
   document.getElementById('stSleepEnd').value = S.sleep.end;
+  renderMoodChart(); renderMoodScatter(); renderMoodHistory(); // きもちダッシュボード
   document.getElementById('evDate').value = todayStr();
 }
 
