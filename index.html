@@ -2005,10 +2005,10 @@ function rollUnicornForToday() {
   }
   save();
 }
-// きょう ぜんぶできた瞬間にも低確率（15%）でサプライズ登場
+// きょう ぜんぶできた瞬間にも低確率（25%）でサプライズ登場
 function maybeUnicornSurprise(stamped) {
   if (!stamped || isUnicornDay()) return;
-  if (Math.random() >= 0.15) return;
+  if (Math.random() >= 0.25) return;
   S.unicornDate = todayStr();
   save();
   setTimeout(() => { // お祝い画面のあとに登場
