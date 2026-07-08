@@ -2005,10 +2005,19 @@ function rollUnicornForToday() {
   }
   save();
 }
-// きょう ぜんぶできた瞬間にも低確率（25%）でサプライズ登場
+// やること全部できた瞬間のユニコーン登場確率
+// きほん15% × しゅくだい全部できていたら2倍 × おてつだい全部できていたら2倍（最大60%）
+function unicornChance() {
+  let p = 0.15;
+  const hwAll = S.homework.length > 0 && S.homework.every(h => hwDoneToday().includes(h.id));
+  const chAll = S.chores.length > 0 && S.chores.every(c => choreDoneToday().includes(c.id));
+  if (hwAll) p *= 2;
+  if (chAll) p *= 2;
+  return p;
+}
 function maybeUnicornSurprise(stamped) {
   if (!stamped || isUnicornDay()) return;
-  if (Math.random() >= 0.25) return;
+  if (Math.random() >= unicornChance()) return;
   S.unicornDate = todayStr();
   save();
   setTimeout(() => { // お祝い画面のあとに登場
