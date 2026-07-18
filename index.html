@@ -1315,6 +1315,12 @@
           <label for="stDlOn" style="font-size:13px;">つかう</label>
           <input type="time" id="stDlTime" value="08:15">
         </div>
+        <label>ねる もくひょうじかん（まにあうと おやすみボーナス⭐+2、15分前と5分前にキャラが声かけします）</label>
+        <div class="inline">
+          <input type="checkbox" id="stSgOn">
+          <label for="stSgOn" style="font-size:13px;">つかう</label>
+          <input type="time" id="stSgTime" value="20:30">
+        </div>
         <label>ねるじかん・おきるじかん（ねるじかんを過ぎるとキャラクターが眠くなり、よなか〜おきるじかんは おやすみ画面になります）</label>
         <div class="inline">
           <input type="checkbox" id="stSleepOn">
@@ -1424,6 +1430,7 @@ if (!S.wakeLog) S.wakeLog = {}; // 起床・就寝の記録 {'YYYY-MM-DD': {wake
   Object.keys(S.wakeLog).forEach(d => { if (d < cutStr) delete S.wakeLog[d]; });
 }
 if (!S.deadline) S.deadline = { on: true, time: '08:15' }; // あさの もくひょうじかん（でかけるじかん）
+if (!S.sleepGoal) S.sleepGoal = { on: true, time: '20:30' }; // ねる もくひょうじかん
 function save() { localStorage.setItem(STORE_KEY, JSON.stringify(S)); }
 
 /* ---------- 天気の自動取得（Open-Meteo・APIキー不要） ---------- */
@@ -1505,6 +1512,7 @@ function tick() {
     renderClockArcs(); // 終わった予定の帯を消す
     checkMoodPrompt(); // 夕方に「きもち」の記録を1回だけ誘う
     checkDeadlineReminders(); // でかけるじかんの15分前・5分前に応援
+    checkSleepGoalReminders(); // ねる目標の15分前・5分前に声かけ
   }
   updateDeadlineChip(now);
   if (document.getElementById('nightOverlay').classList.contains('show')) {
@@ -2650,23 +2658,56 @@ function renderNight() {
   }
 }
 /* ---------- あさの時間チャレンジ（でかけるじかん） ---------- */
-// 「でかけるまで あと◯ぷん」のカウントダウン表示
+// 「でかけるまで／ねるまで あと◯ぷん」のカウントダウン表示
 function updateDeadlineChip(now) {
   const chip = document.getElementById('deadlineChip');
-  if (!S.deadline || !S.deadline.on) { chip.style.display = 'none'; return; }
   const nowMin = now.getHours() * 60 + now.getMinutes();
-  const dl = hmOf(S.deadline.time);
-  const morningItems = S.routines.filter(r => r.period === 'morning');
-  const remain = morningItems.filter(r => !doneToday().includes(r.id)).length;
-  // 午前中・目標時間前・まだ残っているときだけ表示
-  if (now.getHours() >= 12 || nowMin >= dl || remain === 0 || morningItems.length === 0) {
-    chip.style.display = 'none';
-    return;
+  // 朝: でかけるじかん（午前中・目標前・やることが残っているとき）
+  if (S.deadline && S.deadline.on && now.getHours() < 12) {
+    const dl = hmOf(S.deadline.time);
+    const morningItems = S.routines.filter(r => r.period === 'morning');
+    const remain = morningItems.filter(r => !doneToday().includes(r.id)).length;
+    if (nowMin < dl && remain > 0 && morningItems.length > 0) {
+      const left = dl - nowMin;
+      chip.textContent = '🏠 でかけるまで あと' + left + 'ぷん';
+      chip.classList.toggle('urgent', left <= 5);
+      chip.style.display = 'inline-block';
+      return;
+    }
   }
-  const left = dl - nowMin;
-  chip.textContent = '🏠 でかけるまで あと' + left + 'ぷん';
-  chip.classList.toggle('urgent', left <= 5);
-  chip.style.display = 'inline-block';
+  // よる: ねる目標じかん（17時以降・目標前・まだ「ねる」を押していないとき）
+  if (S.sleepGoal && S.sleepGoal.on && now.getHours() >= 17) {
+    const goal = hmOf(S.sleepGoal.time);
+    const rec = S.wakeLog[todayStr()];
+    if (!(rec && rec.sleep) && nowMin < goal) {
+      const left = goal - nowMin;
+      chip.textContent = '🌙 ねるまで あと' + left + 'ぷん';
+      chip.classList.toggle('urgent', left <= 5);
+      chip.style.display = 'inline-block';
+      return;
+    }
+  }
+  chip.style.display = 'none';
+}
+// ねる目標の15分前・5分前にキャラが声かけ
+function checkSleepGoalReminders() {
+  if (!S.sleepGoal || !S.sleepGoal.on) return;
+  const now = new Date();
+  if (now.getHours() < 17) return;
+  const rec = S.wakeLog[todayStr()];
+  if (rec && rec.sleep) return; // もう ねた
+  const nowMin = now.getHours() * 60 + now.getMinutes();
+  const goal = hmOf(S.sleepGoal.time);
+  const flags = dlFlags();
+  if (!flags.includes('s15') && nowMin >= goal - 15 && nowMin < goal - 5) {
+    flags.push('s15');
+    save();
+    tigerSay('🌙 ねる もくひょうまで あと15ふん！おふろと はみがきは すんだかな？', 45000);
+  } else if (!flags.includes('s5') && nowMin >= goal - 5 && nowMin < goal) {
+    flags.push('s5');
+    save();
+    tigerSay(fillMsg('🌙 あと5ふん！おふとんに いこう！ねるまえに 「ねる」ボタンを おしてね！{cry}'), 45000);
+  }
 }
 // 15分前・5分前にキャラが応援（親の代わりに声かけ）
 function checkDeadlineReminders() {
@@ -2689,8 +2730,9 @@ function checkDeadlineReminders() {
   }
 }
 
-// ねるじかんの10分前に予告
+// ねるじかんの10分前に予告（ねる目標が有効なときは、そちらの声かけに任せて重複を避ける）
 function checkSleepWarning() {
+  if (S.sleepGoal && S.sleepGoal.on) return;
   if (!S.sleep || !S.sleep.on) return;
   const now = new Date();
   const hm = now.getHours() * 60 + now.getMinutes();
@@ -2770,6 +2812,14 @@ function wakeSleepTap() {
   } else if (!rec.sleep) {
     rec.sleep = nowHM();
     save();
+    // ねる目標じかんに まにあったら おやすみボーナス⭐+2
+    const nowMin = new Date().getHours() * 60 + new Date().getMinutes();
+    if (S.sleepGoal && S.sleepGoal.on && nowMin <= hmOf(S.sleepGoal.time)) {
+      S.stars += 2;
+      save();
+      renderStars();
+      showPraise('🌙', 'まにあった！', 'ねる もくひょうじかんの まえに ねられたね！\nおやすみボーナス ⭐+2！');
+    }
     buddyGoHome();
   } else {
     tigerSay('きょうは ' + rec.wake + ' に おきて、' + rec.sleep + ' に ねたんだね！おやすみ〜💤', 10000);
@@ -3016,6 +3066,8 @@ function renderParentAll() {
   document.getElementById('stMessage').value = S.message;
   document.getElementById('stDlOn').checked = S.deadline.on;
   document.getElementById('stDlTime').value = S.deadline.time;
+  document.getElementById('stSgOn').checked = S.sleepGoal.on;
+  document.getElementById('stSgTime').value = S.sleepGoal.time;
   document.getElementById('stSleepOn').checked = S.sleep.on;
   document.getElementById('stSleepStart').value = S.sleep.start;
   document.getElementById('stSleepEnd').value = S.sleep.end;
@@ -3204,6 +3256,10 @@ function saveSettings() {
   S.deadline = {
     on: document.getElementById('stDlOn').checked,
     time: document.getElementById('stDlTime').value || '08:15'
+  };
+  S.sleepGoal = {
+    on: document.getElementById('stSgOn').checked,
+    time: document.getElementById('stSgTime').value || '20:30'
   };
   S.sleep = {
     on: document.getElementById('stSleepOn').checked,
