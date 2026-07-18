@@ -2707,14 +2707,12 @@ function checkSleepWarning() {
 }
 
 /* ---------- おきた・ねる の記録（キャラのおうち） ---------- */
-// キャラが「おうちにいる」状態か（きょう「ねる」を押した後、または きのう寝て まだ「おきた」を押していない朝）
+// キャラが「おうちにいる」状態か
+// ルール: その日「おきた！」を押すまでは 常におうちの中。「ねる」を押したら またおうちに帰る
 function isBuddyHome() {
   const t = S.wakeLog[todayStr()];
-  if (t && t.sleep) return true;
-  if (t && t.wake) return false;
-  const y = new Date(); y.setDate(y.getDate() - 1);
-  const yl = S.wakeLog[fmtDate(y)];
-  return !!(yl && yl.sleep);
+  if (t && t.sleep) return true;  // きょう「ねる」を押した後
+  return !(t && t.wake);          // 「おきた！」を押すまでは おうち
 }
 function renderWakeBtn() {
   const btn = document.getElementById('wakeBtn');
